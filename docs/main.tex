@@ -1,0 +1,47 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage[maxbibnames=50, sorting=nty]{biblatex}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage[
+  colorlinks,
+  linkcolor={black},
+  menucolor={black},
+  citecolor={black},
+  urlcolor={blue}
+]{hyperref}
+\usepackage{mathtools}
+\usepackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
+\usepackage{amsmath}
+\usepackage{multicol}
+
+\addbibresource{bibliography.bib}
+
+\graphicspath{{./assets/}}
+\makeatletter
+
+\title{Kerberos: Un serviciu de autentificare pentru sisteme de tip Open Network}
+\author{Prioteasa Liviu Florentin, Rizescu Iulian Ștefan, Ţacu Ștefan Darius}
+
+\begin{document}
+  \begin{center}
+    \Large \textbf{\@title}
+  \end{center}
+
+  \begin{center}
+    \@author
+    \vspace{1cm}
+  \end{center}
+
+  \begin{multicols}{2}
+    \input{chapters/0-abstract}
+    \input{chapters/1-introducere}
+    \input{chapters/2-algoritmul-serial}
+    \input{chapters/3-algoritmul-distribuit}
+    \input{chapters/4-analiza-teoretica}
+
+    \printbibliography
+    [heading=bibintoc]
+  \end{multicols}
+\end{document}
