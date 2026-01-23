@@ -48,3 +48,19 @@ func EncryptEntity(key protocol.SessionKey, v json.Marshaler) (protocol.Encrypte
 
 	return protocol.NewEncryptedData(enc)
 }
+
+func DecryptEntity[T any](key protocol.SessionKey, enc protocol.EncryptedData) (T, error) {
+	var zero T
+
+	bytes, err := crypto.Decrypt(key, enc.Ciphertext())
+	if err != nil {
+		return zero, err
+	}
+
+	var v T
+	if err := json.Unmarshal(bytes, &v); err != nil {
+		return zero, err
+	}
+
+	return v, nil
+}

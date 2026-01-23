@@ -36,6 +36,18 @@ func NewPrincipal(primary Primary, instance Instance, realm Realm) (Principal, e
 	}, nil
 }
 
+func NewKrbtgt(realm Realm) (Principal, error) {
+	if realm == "" {
+		return Principal{}, ErrPrincipalEmptyRealm
+	}
+
+	return Principal{
+		primary:  "krbtgt",
+		instance: Instance(realm),
+		realm:    realm,
+	}, nil
+}
+
 func (p Principal) Primary() Primary   { return p.primary }
 func (p Principal) Instance() Instance { return p.instance }
 func (p Principal) Realm() Realm       { return p.realm }

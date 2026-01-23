@@ -7,6 +7,7 @@ import (
 	"github.com/rizesql/kerberos/internal/crypto"
 	"github.com/rizesql/kerberos/internal/kdb"
 	"github.com/rizesql/kerberos/internal/o11y/logging"
+	"github.com/rizesql/kerberos/internal/protocol"
 	"github.com/rizesql/kerberos/internal/shutdown"
 )
 
@@ -35,10 +36,15 @@ func Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to derive master key: %w", err)
 	}
 
+	principal, err := protocol.NewKrbtgt(protocol.Realm(cfg.Realm))
+	if err != nil {
+		return fmt.Errorf("failed to create krbtgt principal: %w", err)
+	}
+
 	_, err = kdb.Query.CreatePrincipal(ctx, db, kdb.CreatePrincipalParams{
-		PrimaryName: "krbtgt",
-		Instance:    cfg.Realm,
-		Realm:       cfg.Realm,
+		PrimaryName: string(principal.Primary()),
+		Instance:    string(principal.Instance()),
+		Realm:       string(principal.Realm()),
 		KeyBytes:    key.Expose(),
 		Kvno:        1,
 	})
