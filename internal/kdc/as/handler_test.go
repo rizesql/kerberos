@@ -10,6 +10,7 @@ import (
 	"github.com/rizesql/kerberos/internal/assert"
 	"github.com/rizesql/kerberos/internal/crypto"
 	"github.com/rizesql/kerberos/internal/kdb"
+	"github.com/rizesql/kerberos/internal/kdc"
 	"github.com/rizesql/kerberos/internal/kdc/as"
 	"github.com/rizesql/kerberos/internal/protocol"
 	"github.com/rizesql/kerberos/internal/testkit"
@@ -42,9 +43,9 @@ func TestHandler(t *testing.T) {
 	})
 
 	srv := h.NewServer()
-	as := as.NewHandler(h.NewKDCPlatform(), as.Config{
-		Realm:      "TEST.REALM",
-		TicketLife: 1 * time.Hour,
+	as := as.NewHandler(h.NewKDCPlatform(), kdc.Config{
+		Realm:          "TEST.REALM",
+		TicketLifetime: 1 * time.Hour,
 	})
 	srv.Register(as)
 
@@ -79,7 +80,7 @@ func TestHandler_WrongRealm(t *testing.T) {
 	h := testkit.NewHarness(t)
 
 	srv := h.NewServer()
-	as := as.NewHandler(h.NewKDCPlatform(), as.Config{
+	as := as.NewHandler(h.NewKDCPlatform(), kdc.Config{
 		Realm: "TEST.REALM",
 	})
 	srv.Register(as)
@@ -109,7 +110,7 @@ func TestHandler_PrincipalNotFound(t *testing.T) {
 	})
 
 	srv := h.NewServer()
-	as := as.NewHandler(h.NewKDCPlatform(), as.Config{
+	as := as.NewHandler(h.NewKDCPlatform(), kdc.Config{
 		Realm: "TEST.REALM",
 	})
 	srv.Register(as)

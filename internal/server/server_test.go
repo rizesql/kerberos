@@ -24,7 +24,7 @@ func (m mockRoute) Handle() http.HandlerFunc { return m.handle }
 
 func TestServer_Register(t *testing.T) {
 	logger := logging.Noop()
-	srv := server.New(server.Dependencies{Logger: logger}, server.Config{})
+	srv := server.New(logger)
 
 	called := false
 	route := mockRoute{
@@ -48,7 +48,7 @@ func TestServer_Register(t *testing.T) {
 
 func TestServer_Middleware(t *testing.T) {
 	logger := logging.Noop()
-	srv := server.New(server.Dependencies{Logger: logger}, server.Config{})
+	srv := server.New(logger)
 
 	middlewareCalled := false
 	mw := func(next http.HandlerFunc) http.HandlerFunc {
@@ -78,7 +78,7 @@ func TestServer_Middleware(t *testing.T) {
 
 func TestServer_ListenState(t *testing.T) {
 	logger := logging.Noop()
-	srv := server.New(server.Dependencies{Logger: logger}, server.Config{})
+	srv := server.New(logger)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.Err(t, err, nil)

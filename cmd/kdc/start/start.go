@@ -10,9 +10,10 @@ import (
 	"github.com/rizesql/kerberos/internal/crypto"
 	"github.com/rizesql/kerberos/internal/kdb"
 	"github.com/rizesql/kerberos/internal/kdc"
-	"github.com/rizesql/kerberos/internal/kdc/as"
 	kdc_http "github.com/rizesql/kerberos/internal/kdc/http"
 	"github.com/rizesql/kerberos/internal/o11y/logging"
+	"github.com/rizesql/kerberos/internal/protocol"
+	"github.com/rizesql/kerberos/internal/replay"
 	"github.com/rizesql/kerberos/internal/server"
 	"github.com/rizesql/kerberos/internal/shutdown"
 )
@@ -43,17 +44,16 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 	shutdowns.Register(db.Close)
 
-	platform := kdc.NewPlatform(db, logger, clock, keygen)
+	cache := replay.NewInMemoryCache(cfg.ReplayWindow, clock)
 
-	srv := server.New(
-		server.Dependencies{Logger: logger},
-		server.Config{},
-	)
+	platform := kdc.NewPlatform(db, logger, clock, keygen, cache)
+
+	srv := server.New(logger)
 	shutdowns.RegisterCtx(srv.Shutdown)
 
-	kdc_http.Register(srv, platform, as.Config{
-		Realm:      cfg.Realm,
-		TicketLife: cfg.TicketLife,
+	kdc_http.Register(srv, platform, kdc.Config{
+		Realm:          protocol.Realm(cfg.Realm),
+		TicketLifetime: cfg.TicketLife,
 	})
 
 	ln, err := net.Listen("tcp", cfg.Port)

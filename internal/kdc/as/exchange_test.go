@@ -9,6 +9,7 @@ import (
 	"github.com/rizesql/kerberos/internal/assert"
 	"github.com/rizesql/kerberos/internal/crypto"
 	"github.com/rizesql/kerberos/internal/kdb"
+	"github.com/rizesql/kerberos/internal/kdc"
 	"github.com/rizesql/kerberos/internal/kdc/as"
 	"github.com/rizesql/kerberos/internal/kdc/shared"
 	"github.com/rizesql/kerberos/internal/protocol"
@@ -40,9 +41,9 @@ func TestExchange(t *testing.T) {
 		Kvno:        1,
 	})
 
-	exchange := as.NewExchange(h.NewKDCPlatform(), as.Config{
-		Realm:      "ATHENA.MIT.EDU",
-		TicketLife: 8 * time.Hour,
+	exchange := as.NewExchange(h.NewKDCPlatform(), kdc.Config{
+		Realm:          "ATHENA.MIT.EDU",
+		TicketLifetime: 8 * time.Hour,
 	})
 
 	// Inputs

@@ -1,4 +1,4 @@
-package as
+package tgs
 
 import (
 	"errors"
@@ -24,13 +24,13 @@ func NewHandler(platform *kdc.Platform, cfg kdc.Config) *Handler {
 }
 
 func (h *Handler) Method() string { return http.MethodPost }
-func (h *Handler) Path() string   { return "/as" }
+func (h *Handler) Path() string   { return "/tgs" }
 
 func (h *Handler) Handle() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		req, err := server.Decode[protocol.ASReq](r)
+		req, err := server.Decode[protocol.TGSReq](r)
 		if err != nil {
-			h.logger.Error("failed to decode AS request", "err", err)
+			h.logger.Error("failed to decode TGS request", "err", err)
 			server.EncodeError(w, http.StatusBadRequest, err)
 			return
 		}
@@ -50,12 +50,12 @@ func (h *Handler) Handle() http.HandlerFunc {
 
 func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, shared.ErrPrincipalNotFound):
-		server.EncodeError(w, http.StatusNotFound, err)
 	case errors.Is(err, shared.ErrWrongRealm):
 		server.EncodeError(w, http.StatusBadRequest, err)
+	case errors.Is(err, shared.ErrPrincipalNotFound):
+		server.EncodeError(w, http.StatusNotFound, err)
 	default:
-		h.logger.Error("AS exchange failed", "err", err)
+		h.logger.Error("TGS exchange failed", "err", err)
 		server.EncodeError(w, http.StatusInternalServerError, err)
 	}
 }

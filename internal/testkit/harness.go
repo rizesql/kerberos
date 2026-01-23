@@ -14,6 +14,7 @@ import (
 	"github.com/rizesql/kerberos/internal/kdb"
 	"github.com/rizesql/kerberos/internal/kdc"
 	"github.com/rizesql/kerberos/internal/o11y/logging"
+	"github.com/rizesql/kerberos/internal/replay"
 	"github.com/rizesql/kerberos/internal/server"
 )
 
@@ -24,6 +25,7 @@ type Harness struct {
 	DB           kdb.Database
 	Clock        *clock.TestClock
 	KeyGenerator *crypto.TestKeyGenerator
+	ReplayCache  *replay.TestCache
 	Logger       *logging.Logger
 }
 
@@ -47,11 +49,14 @@ func NewHarness(t *testing.T) *Harness {
 		}
 	})
 
+	testClock := clock.NewTestClock()
+
 	return &Harness{
 		t:            t,
 		DB:           db,
-		Clock:        clock.NewTestClock(),
+		Clock:        testClock,
 		KeyGenerator: crypto.NewTestKeyGenerator(),
+		ReplayCache:  replay.NewTestCache(testClock),
 		Logger:       logger,
 	}
 }
@@ -65,15 +70,13 @@ func (h *Harness) NewKDCPlatform() *kdc.Platform {
 		KeyGenerator: h.KeyGenerator,
 		Database:     h.DB,
 		Logger:       h.Logger,
+		ReplayCache:  h.ReplayCache,
 	}
 }
 
 // --- Server Helpers ---
 func (h *Harness) NewServer() *server.Server {
-	return server.New(
-		server.Dependencies{Logger: h.Logger},
-		server.Config{},
-	)
+	return server.New(h.Logger)
 }
 
 func Call[Req, Res any](t *testing.T, srv *server.Server, r server.Route, headers http.Header, req Req) TestResponse[Res] {

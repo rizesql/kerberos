@@ -13,10 +13,6 @@ import (
 	"github.com/rizesql/kerberos/internal/o11y/logging"
 )
 
-type Dependencies struct {
-	Logger *logging.Logger
-}
-
 type ServerState int
 
 const (
@@ -28,13 +24,12 @@ type Server struct {
 	mu    sync.Mutex
 	state ServerState
 
-	log *logging.Logger
-	mux *http.ServeMux
-	srv *http.Server
-	cfg Config
+	logger *logging.Logger
+	mux    *http.ServeMux
+	srv    *http.Server
 }
 
-func New(deps Dependencies, cfg Config) *Server {
+func New(logger *logging.Logger) *Server {
 	mux := http.NewServeMux()
 
 	srv := &http.Server{
@@ -44,11 +39,10 @@ func New(deps Dependencies, cfg Config) *Server {
 	}
 
 	return &Server{
-		mu:  sync.Mutex{},
-		log: deps.Logger,
-		mux: mux,
-		srv: srv,
-		cfg: cfg,
+		mu:     sync.Mutex{},
+		logger: logger,
+		mux:    mux,
+		srv:    srv,
 	}
 }
 
@@ -59,14 +53,14 @@ func (s *Server) Mux() *http.ServeMux {
 func (s *Server) Listen(ctx context.Context, ln net.Listener) error {
 	s.mu.Lock()
 	if s.state == ServerStateListening {
-		s.log.Warn("Server is already listening")
+		s.logger.Warn("Server is already listening")
 		s.mu.Unlock()
 		return nil
 	}
 	s.state = ServerStateListening
 	s.mu.Unlock()
 
-	s.log.Info("listening",
+	s.logger.Info("listening",
 		"srv", "http",
 		"addr", ln.Addr().String(),
 	)
@@ -79,7 +73,7 @@ func (s *Server) Listen(ctx context.Context, ln net.Listener) error {
 }
 
 func (s *Server) Register(r Route, mws ...Middleware) {
-	s.log.Debug("registering",
+	s.logger.Debug("registering",
 		"method", r.Method(),
 		"path", r.Path(),
 	)

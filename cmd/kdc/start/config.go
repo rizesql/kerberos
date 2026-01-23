@@ -7,17 +7,19 @@ import (
 )
 
 type Config struct {
-	DBPath     string
-	Realm      string
-	Port       string
-	TicketLife time.Duration
+	DBPath       string
+	Realm        string
+	Port         string
+	TicketLife   time.Duration
+	ReplayWindow time.Duration
 }
 
 func newConfig(cmd *cli.Command) Config {
 	return Config{
-		DBPath:     cmd.String("db"),
-		Realm:      cmd.String("realm"),
-		Port:       cmd.String("port"),
-		TicketLife: 8 * time.Hour,
+		DBPath:       cmd.String("db"),
+		Realm:        cmd.String("realm"),
+		Port:         cmd.String("port"),
+		TicketLife:   8 * time.Hour,
+		ReplayWindow: 5 * time.Minute,
 	}
 }

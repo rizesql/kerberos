@@ -14,24 +14,15 @@ import (
 	"github.com/rizesql/kerberos/internal/protocol"
 )
 
-type Config struct {
-	Realm      string
-	TicketLife time.Duration
-}
-
 type Exchange struct {
 	db     kdb.Database
 	logger *logging.Logger
 	clock  clock.Clock
 	keygen crypto.KeyGenerator
-	cfg    Config
+	cfg    kdc.Config
 }
 
-func NewExchange(platform *kdc.Platform, cfg Config) *Exchange {
-	if cfg.TicketLife == 0 {
-		cfg.TicketLife = 8 * time.Hour
-	}
-
+func NewExchange(platform *kdc.Platform, cfg kdc.Config) *Exchange {
 	return &Exchange{
 		db:     platform.Database,
 		logger: platform.Logger,
@@ -42,8 +33,9 @@ func NewExchange(platform *kdc.Platform, cfg Config) *Exchange {
 }
 
 func (e *Exchange) Handle(ctx context.Context, req protocol.ASReq) (protocol.ASRep, error) {
-	if err := e.validateRealm(req); err != nil {
-		return protocol.ASRep{}, err
+	if req.Client().Realm() != e.cfg.Realm {
+		return protocol.ASRep{}, fmt.Errorf("%w: client realm %s != kdc realm %s",
+			shared.ErrWrongRealm, req.Client().Realm(), e.cfg.Realm)
 	}
 
 	now := e.clock.Now().UTC()
@@ -76,14 +68,6 @@ func (e *Exchange) Handle(ctx context.Context, req protocol.ASReq) (protocol.ASR
 	return protocol.NewASRep(encTicket, encRepPart)
 }
 
-func (e *Exchange) validateRealm(req protocol.ASReq) error {
-	if string(req.Client().Realm()) != e.cfg.Realm {
-		return fmt.Errorf("%w: client realm %s != kdc realm %s",
-			shared.ErrWrongRealm, req.Client().Realm(), e.cfg.Realm)
-	}
-	return nil
-}
-
 func (e *Exchange) encryptTicket(
 	req protocol.ASReq,
 	now time.Time,
@@ -95,7 +79,7 @@ func (e *Exchange) encryptTicket(
 		req.Client(),
 		req.ClientAddr(),
 		now,
-		e.cfg.TicketLife,
+		e.cfg.TicketLifetime,
 		sessionKey,
 	)
 	if err != nil {
@@ -115,7 +99,7 @@ func (e *Exchange) encryptRepPart(
 		sessionKey,
 		req.Nonce(),
 		now,
-		e.cfg.TicketLife,
+		e.cfg.TicketLifetime,
 		req.Service(),
 	)
 	if err != nil {
