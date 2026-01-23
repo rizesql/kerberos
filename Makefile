@@ -11,6 +11,9 @@ WHITE  := $(shell tput -Txterm setaf 7)
 CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
+generate:
+	sqlc generate
+
 ## Quality
 check-quality: ## runs code quality checks
 	make lint
@@ -30,11 +33,14 @@ fmt: ## runs go formatter
 tidy: ## runs tidy to fix go.mod dependencies
 	go mod tidy
 
+vendor: ## runs go mod vendor
+	go mod vendor
+
 ## Test
 test: ## runs tests and create generates coverage report
 	make tidy
 	make vendor
-	go test -v -timeout 10m ./... -coverprofile=coverage.out -json > report.json
+	gotest -v -timeout 10m ./... -coverprofile=coverage.out -json > report.json
 
 coverage: ## displays test coverage report in html mode
 	make test
@@ -43,20 +49,23 @@ coverage: ## displays test coverage report in html mode
 ## Build
 build: ## build the go application
 	mkdir -p out/
-	go build -o $(APP_EXECUTABLE)
+	go build -o $(APP_EXECUTABLE) ./cmd/kdc
 	@echo "Build passed"
 
-run: ## runs the go binary. use additional options if required.
+run: ## runs the go binary. usage: make run [args...]
 	make build
 	chmod +x $(APP_EXECUTABLE)
-	$(APP_EXECUTABLE)
+	$(APP_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS)) $(ARGS)
+
+docs: ## builds the documentation
+	$(MAKE) -C docs
 
 clean: ## cleans binary and other generated files
 	go clean
 	rm -rf out/
 	rm -f coverage*.out
 
-.PHONY: all test build vendor
+.PHONY: all test build vendor docs
 ## All
 all: ## runs setup, quality checks and builds
 	make check-quality
@@ -75,3 +84,8 @@ help: ## Show this help.
 		if (/^[a-zA-Z_-]+:.*?##.*$$/) {printf "    ${YELLOW}%-20s${GREEN}%s${RESET}\n", $$1, $$2} \
 		else if (/^## .*$$/) {printf "  ${CYAN}%s${RESET}\n", substr($$1,4)} \
 		}' $(MAKEFILE_LIST)
+
+ifneq ($(filter run,$(MAKECMDGOALS)),)
+%:
+		@:
+endif

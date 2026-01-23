@@ -11,6 +11,7 @@
 
     packages = with pkgs; [
       hl-log-viewer
+      sqlc
     ];
 
     shellHook = ''
