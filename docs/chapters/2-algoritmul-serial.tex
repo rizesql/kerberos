@@ -22,23 +22,25 @@ Pașii algoritmului sunt:
 \subsection{Pseudocod}
 Algoritmul poate fi formalizat după cum urmează:
 
-\end{multicols}
-\begin{algorithm}[H]
-\caption{Autentificare Serială (Locală)}
-\begin{algorithmic}[1]
-\Procedure{SerialAuth}{UserID, InputPassword}
-    \State $record \gets \text{DB.lookup}(\text{primary\_name} = UserID)$
-    \If{$record = \text{NULL}$}
+% Nu mai închide multicols (\end{multicols})
+
+\begin{algorithm*}[t] % Folosește algorithm* cu [t] (top)
+    \caption{Autentificare Serială (Locală)}
+    \begin{algorithmic}[1]
+        \Procedure{SerialAuth}{UserID, InputPassword}
+        \State $record \gets \text{DB.lookup}(\text{primary\_name} = UserID)$
+        \If{$record = \text{NULL}$}
         \Return \textbf{false} \Comment{Utilizator inexistent}
-    \EndIf
-    \State $DerivedKey \gets \text{KDF}(InputPassword)$
-    \If{$DerivedKey = record.\text{key\_bytes}$}
+        \EndIf
+        \State $DerivedKey \gets \text{KDF}(InputPassword)$
+        \If{$DerivedKey = record.\text{key\_bytes}$}
         \State \text{CreateLocalSession}(UserID)
         \Return \textbf{true}
-    \Else
+        \Else
         \Return \textbf{false} \Comment{Parolă incorectă}
-    \EndIf
-\EndProcedure
-\end{algorithmic}
-\end{algorithm}
-\begin{multicols}{2}
+        \EndIf
+        \EndProcedure
+    \end{algorithmic}
+\end{algorithm*}
+
+% Continuă textul normal, fără a redeschide multicols

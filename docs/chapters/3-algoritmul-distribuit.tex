@@ -5,8 +5,10 @@ Kerberos rezolvă problema autentificării într-o rețea nesigură folosind un 
 \subsection{Notații Utilizate}
 Pentru descrierea formală, vom folosi următoarele simboluri simplificate, conform lucrării originale \cite{steiner1988kerberos}:
 
-\end{multicols}
-\begin{center}
+% Nu mai închide multicols aici
+
+\begin{table*}[t] % table* forțează afișarea pe toată lățimea, [t] îl pune sus
+    \centering
     \begin{tabular}{|c|l|}
         \hline
         \textbf{Simbol} & \textbf{Semnificație}                                             \\
@@ -14,14 +16,17 @@ Pentru descrierea formală, vom folosi următoarele simboluri simplificate, conf
         $C, S$          & Clientul (utilizator) și Serverul (serviciul dorit)               \\
         $AS, TGS$       & Componentele KDC: Authentication Server și Ticket-Granting Server \\
         $K_x$           & Cheia secretă a lui $x$ (ex: hash-ul parolei)                     \\
-        \{M\}\_K        & Mesajul $M$ criptat cu cheia $K$                                  \\
+        $\{M\}_K$       & Mesajul $M$ criptat cu cheia $K$                                  \\
         $TGT$           & \textit{Ticket-Granting Ticket} (Permisul universal)              \\
         $T_{Serv}$      & Tichetul de Serviciu (pentru acces final)                         \\
         $Auth$          & Autentificatorul (dovada identității pe loc, conține timestamp)   \\
         \hline
     \end{tabular}
-\end{center}
-\begin{multicols}{2}
+    \caption{Notații și Simboluri Kerberos}
+    \label{tab:notatii}
+\end{table*}
+
+% Continuă textul normal în două coloane...
 
 \subsection{Fluxul Protocolului (Cele 3 Faze)}
 
