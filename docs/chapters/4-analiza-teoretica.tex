@@ -1,10 +1,155 @@
-\section{Analiza Teoretică}
+\section{Analiză Teoretică}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce vitae eros sit amet sem ornare
-varius. Duis eget felis eget risus posuere luctus. Integer odio metus, eleifend at nunc
-vitae, rutrum fermentum leo. Quisque rutrum vitae risus nec porta. Nunc eu orci euismod,
-ornare risus at, accumsan augue. Ut tincidunt pharetra convallis. Maecenas ut pretium ex.
-Morbi tellus dui, viverra quis augue at, tincidunt hendrerit orci. Lorem ipsum dolor sit amet,
-consectetur adipiscing elit. Aliquam quis sollicitudin nunc. Sed sollicitudin purus
-dapibus mi fringilla, nec tincidunt nunc eleifend. Nam ut molestie erat. Integer eros dolor,
-viverra quis massa at, auctor.
+Conform cerințelor de proiectare, evaluăm protocolul din perspectiva corectitudinii, performanței și scalabilității.
+
+\subsection{Analiza Corectitudinii}
+Corectitudinea protocolului Kerberos se bazează pe două premise esențiale care diferențiază acest sistem distribuit de varianta serială:
+
+\begin{enumerate}
+    \item \textbf{Sincronizarea Ceasurilor (Time Skew):} Deoarece autentificatorii ($Auth_C$) se bazează pe timestamp-uri pentru a preveni atacurile de tip \textit{replay}, este critic ca ceasurile clientului și serverului să fie sincronizate (de obicei prin protocolul NTP). O deviație mai mare de 5 minute (configurație standard) duce la respingerea tichetelor valid emise, cauzând o eroare de disponibilitate (False Negative).
+    \item \textbf{Integritatea TTP (Trusted Third Party):} Securitatea întregului sistem depinde de faptul că KDC-ul nu este compromis. Deoarece KDC-ul stochează cheile secrete ale tuturor principalilor, compromiterea acestuia permite unui atacator să genereze orice tichet (atac de tip "Golden Ticket"), permițând impersonarea oricărui utilizator către orice serviciu.
+\end{enumerate}
+
+\subsection{Complexitate (Mesaje și Timp)}
+Pentru o sesiune completă de autentificare și acces la un serviciu ("Cold Start"), complexitatea mesajelor este constantă, totalizând 6 pachete de rețea:
+
+\begin{itemize}
+    \item \textbf{AS Exchange:} 2 mesaje (Cerere + Răspuns).
+    \item \textbf{TGS Exchange:} 2 mesaje (Cerere + Răspuns).
+    \item \textbf{Client-Server:} 2 mesaje (Cerere + Confirmare).
+\end{itemize}
+
+\textbf{Optimizare (Cache):} Ulterior, pentru accesarea aceluiași serviciu, costul scade la \textbf{2 mesaje}, deoarece clientul refolosește tichetul de serviciu ($T_{Serv}$) până la expirarea acestuia (uzual 8 ore). Pentru accesarea unui \textit{serviciu nou}, costul este de \textbf{4 mesaje} (TGS + CS), deoarece se refolosește TGT-ul.
+
+Din punct de vedere computațional, complexitatea este redusă ($O(N)$), deoarece protocolul utilizează exclusiv criptare simetrică (DES/AES), care este ordine de mărime mai rapidă decât criptarea asimetrică (RSA/ECC).
+
+\subsection{Topologii și Scalabilitate (Cross-Realm)}
+Într-o implementare simplă, un singur KDC poate deveni un gât de sticlă. Pe lângă replicarea Master-Slave (discutată în Secțiunea 3.4), Kerberos suportă scalarea administrativă prin mecanismul \textbf{Cross-Realm Authentication}.
+
+Aceasta permite unui client dintr-un domeniu (Realm A) să acceseze servicii dintr-un alt domeniu (Realm B), cu condiția să existe o relație de încredere (cheie partajată) între cele două servere KDC.
+
+\begin{figure*}[t] % figure* extinde figura pe toată lățimea paginii (ambele coloane)
+    \centering
+    \resizebox{0.9\textwidth}{!}{ % Scalăm la 90% din lățimea totală a paginii
+        \begin{tikzpicture}[
+            node distance=2.5cm,
+            % --- STILURI VIZUALE ---
+            % 1. KDC (Serverele de încredere)
+            kdc/.style={
+                    draw=blue!40!black,
+                    top color=white,
+                    bottom color=blue!15,
+                    rounded corners=3pt,
+                    align=center,
+                    minimum height=1.5cm,
+                    minimum width=2.5cm,
+                    drop shadow,
+                    font=\bfseries
+                },
+            % 2. Entități User/Server
+            entity/.style={
+                    draw=gray!60!black,
+                    top color=white,
+                    bottom color=gray!10,
+                    rectangle,
+                    rounded corners,
+                    minimum height=1cm,
+                    minimum width=2cm,
+                    align=center,
+                    drop shadow,
+                    font=\small
+                },
+            % 3. Săgeți de flux
+            flow/.style={
+            ->,
+            >={Stealth[length=3mm]},
+            thick,
+            color=blue!40!black,
+            rounded corners
+            },
+            % 4. Etichete pe săgeți
+            lbl/.style={
+                    midway,
+                    fill=white,
+                    inner sep=1.5pt,
+                    font=\scriptsize\bfseries,
+                    text=blue!40!black,
+                    align=center,
+                    draw=blue!10,
+                    rounded corners=2pt
+                },
+            % 5. Fundal Realm (Domeniu)
+            realm/.style={
+                    draw,
+                    dashed,
+                    rounded corners=10pt,
+                    inner sep=15pt,
+                    thick
+                }
+            ]
+
+            % --- POZIȚIONARE NODURI ---
+
+            % REALM A (Stânga)
+            \node[kdc] (kdcA) at (0, 4) {KDC A\\(Local Realm)};
+            \node[entity] (client) at (0, 0) {Client @ A};
+
+            % REALM B (Dreapta) - Distanță mare pe orizontală
+            \node[kdc] (kdcB) at (10, 4) {KDC B\\(Remote Realm)};
+            \node[entity] (server) at (10, 0) {Server @ B};
+
+            % --- FUNDALURI REALMURI (Chenare) ---
+            \begin{scope}[on background layer]
+                % Chenar Realm A (Roșu pal)
+                \node[realm, draw=red!40, fill=red!5, fit=(kdcA) (client)] (boxA) {};
+                \node[anchor=north west, color=red!60!black, font=\bfseries] at (boxA.north west) {Realm A};
+
+                % Chenar Realm B (Verde pal)
+                \node[realm, draw=green!40!black, fill=green!5, fit=(kdcB) (server)] (boxB) {};
+                \node[anchor=north east, color=green!40!black, font=\bfseries] at (boxB.north east) {Realm B};
+            \end{scope}
+
+            % --- CONEXIUNI ȘI FLUX ---
+
+            % 0. TRUST LINK (Cheia partajată între KDC-uri)
+            \draw[<->, dashed, ultra thick, color=orange!60!black] (kdcA) --
+            node[midway, above, font=\bfseries\small, color=orange!60!black] {Inter-Realm Trust Key}
+            (kdcB);
+
+            % 1. Cerere TGT pentru Remote
+            \draw[flow] (client) --
+            node[lbl, left] {1. Cere TGT\\pentru Realm B}
+            (kdcA);
+
+            % 2. Emitere Remote TGT (Simbolic, se întoarce la Client)
+            % Nu desenăm săgeata de retur pentru a nu aglomera, se subînțelege din pasul 1
+
+            % 3. Prezentare TGT la KDC B (Diagonala)
+            \draw[flow] (client) --
+            node[lbl, sloped, above] {2. Prezintă Remote TGT\\(emis de A)}
+            (kdcB);
+
+            % 4. Emitere Tichet Serviciu (KDC B -> Client -> Server)
+            % Simplificăm vizual: KDC B -> Server (prin Client logic)
+            \draw[flow] (kdcB) --
+            node[lbl, right] {3. Emite $T_{Serv}$}
+            (server);
+
+            % Săgeata finală Client -> Server
+            \draw[flow] (client) --
+            node[lbl, below] {4. Acces Final\\cu $T_{Serv}$}
+            (server);
+
+        \end{tikzpicture}
+    }
+    \caption{Topologie Cross-Realm: Autentificare între domenii diferite}
+    \label{fig:cross_realm}
+\end{figure*}
+În figura \ref{fig:cross_realm}, fluxul este modificat astfel:
+\begin{enumerate}
+    \item Clientul cere KDC-ului local un tichet pentru KDC-ul străin.
+    \item KDC-ul local emite un "Remote TGT" criptat cu cheia inter-realm.
+    \item Clientul prezintă acest TGT direct KDC-ului străin.
+    \item KDC-ul străin emite tichetul de serviciu final.
+\end{enumerate}
+Această arhitectură permite scalarea globală a sistemului fără a centraliza toți utilizatorii într-o singură bază de date.
