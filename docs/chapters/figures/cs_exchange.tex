@@ -1,0 +1,75 @@
+\begin{tikzpicture}[
+        node distance=3.2cm, % Același spațiere compactă
+        % --- STILURI (Identice cu celelalte figuri) ---
+        entity/.style={
+                draw=blue!40!black,
+                top color=white,
+                bottom color=blue!10,
+                rounded corners=3pt,
+                align=center,
+                minimum height=1cm,
+                minimum width=1.8cm,
+                drop shadow,
+                font=\bfseries\small
+            },
+        msg/.style={
+                midway,
+                above,
+                font=\scriptsize,
+                color=black!80
+            },
+        process/.style={
+                draw=orange!50!black,
+                fill=orange!5,
+                rounded corners=2pt,
+                align=left,
+                font=\tiny\sffamily,
+                inner sep=4pt,
+                drop shadow={opacity=0.3}
+            },
+        mathnote/.style={
+                below=0.1cm,
+                font=\tiny,
+                color=black!70
+            }
+    ]
+
+    % 1. Actorii
+    \node[entity] (client) {Client ($C$)};
+    \node[entity, right=of client] (server) {Server ($S$)};
+
+    % 2. Liniile vieții
+    \draw[thick, gray!50] (client) -- ++(0,-5) coordinate (c_end);
+    \draw[thick, gray!50] (server) -- ++(0,-5) coordinate (s_end);
+
+    % 3. Mesajul 5 (Cerere Acces)
+    \draw[-{Stealth[length=3mm]}, thick, color=blue!40!black]
+    ($(client)+(0,-1.1)$) --
+    node[msg] {5. Cerere: $T_{Serv}, Auth_C$}
+    ($(server)+(0,-1.1)$);
+
+    % Formula Auth
+    \node[mathnote] at ($(client)!0.5!(server) + (0,-1)$) {
+    $Auth_C = \{C, TS\}_{K_{C,S}}$
+    };
+
+    % --- CHENAR PROCESARE INTERNĂ SERVER ---
+    % Am adăugat '\\' la final de rând pentru a forța verticalitatea
+    \node[process, below=0.5cm of server, anchor=north] {
+        $\bullet$ Decr. $T_{Serv}$ ($K_S$)\\
+        $\bullet$ Extrage $K_{C,S}$\\
+        $\bullet$ Verif. $TS$ (< 5min)
+    };
+
+    % 4. Mesajul 6 (Confirmare / Acces)
+    \draw[-{Stealth[length=3mm]}, thick, color=blue!40!black]
+    ($(server)+(0,-4)$) --
+    node[msg, align=center] {6. Răspuns: Acces Permis \\ (sau $\{TS+1\}_{K_{C,S}}$)}
+    ($(client)+(0,-4)$);
+
+    % Notă finală
+    \node[mathnote] at ($(client)!0.5!(server) + (0,-4)$) {
+        \textit{*Sesiune stabilită}
+    };
+
+\end{tikzpicture}

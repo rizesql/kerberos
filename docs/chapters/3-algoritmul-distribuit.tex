@@ -71,15 +71,15 @@ TGS-ul verifică timestamp-ul din autentificator pentru a preveni atacurile de t
 \subsubsection{Faza 3: Accesarea Serviciului (Client-Server Exchange)}
 \textbf{Scop:} Clientul prezintă tichetul final serverului.
 
-\begin{itemize}
-    \item \textbf{Pasul E:} Clientul trimite tichetul și un nou autentificator către server.
-          % Corecție: Fără $ în interiorul \[ \], și acoladele de grupare pentru indice scrise simplu { }
-          \[
-              C \rightarrow S: \quad T_{Serviciu}, \quad \{ C, \text{Timestamp} \}_{K_{C,S}}
-          \]
-
-    \item \textbf{Pasul F:} Serverul decriptează tichetul (folosind propria cheie secretă), află cheia de sesiune partajată și verifică timestamp-ul. Dacă diferența de timp este mică (ex: sub 5 minute), accesul este permis.
-\end{itemize}
+\begin{figure}[H]
+    \centering
+    % \resizebox asigură scalarea automată la lățimea coloanei
+    \resizebox{\linewidth}{!}{
+        \input{chapters/figures/cs_exchange.tex}
+    }
+    \caption{Diagrama Client-Server Exchange}
+    \label{fig:cs_exchange}
+\end{figure}
 
 \subsection{De ce este acest sistem sigur?}
 \begin{enumerate}

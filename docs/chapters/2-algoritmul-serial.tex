@@ -22,9 +22,9 @@ Pașii algoritmului sunt:
 \subsection{Pseudocod}
 Algoritmul poate fi formalizat după cum urmează:
 
-% Nu mai închide multicols (\end{multicols})
 
-\begin{algorithm*}[t] % Folosește algorithm* cu [t] (top)
+\end{multicols}
+\begin{algorithm}[H] % Folosește algorithm* cu [t] (top)
     \caption{Autentificare Serială (Locală)}
     \begin{algorithmic}[1]
         \Procedure{SerialAuth}{UserID, InputPassword}
@@ -41,6 +41,7 @@ Algoritmul poate fi formalizat după cum urmează:
         \EndIf
         \EndProcedure
     \end{algorithmic}
-\end{algorithm*}
+\end{algorithm}
+\begin{multicols}{2}
 
-% Continuă textul normal, fără a redeschide multicols
+\newpage
