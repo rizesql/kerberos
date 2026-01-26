@@ -1,79 +1,87 @@
 \section{Algoritmul Distribuit: Protocolul Kerberos}
 
-Kerberos este un protocol de autentificare bazat pe conceptul de \textit{Trusted Third Party}. Pentru a descrie interacțiunea distribuită dintre entități, vom utiliza notația standard consacrată de Steiner, Neuman și Schiller \cite{steiner1988kerberos}.
+Kerberos rezolvă problema autentificării într-o rețea nesigură folosind un \textit{Trusted Third Party} (KDC). Pentru a face protocolul ușor de înțeles, îl putem privi ca pe un sistem de bilete: utilizatorul nu prezintă parola la fiecare serviciu, ci obține un "permis universal" (TGT) pe care îl schimbă ulterior pentru "bilete specifice" de acces.
 
-\subsection{Notații și Simboluri}
-
-Pentru claritatea descrierii formale, definim următorii termeni și abrevieri:
+\subsection{Notații Utilizate}
+Pentru descrierea formală, vom folosi următoarele simboluri simplificate, conform lucrării originale \cite{steiner1988kerberos}:
 
 \end{multicols}
 \begin{center}
     \begin{tabular}{|c|l|}
         \hline
-        \textbf{Simbol} & \textbf{Descriere}                                       \\
+        \textbf{Simbol} & \textbf{Semnificație}                                             \\
         \hline
-        $c$             & Clientul (principalul care solicită acces)               \\
-        $s$             & Serverul (serviciul accesat, ex: File Server)            \\
-        $AS$            & Authentication Server (componentă KDC)                   \\
-        $TGS$           & Ticket-Granting Server (componentă KDC)                  \\
-        $K_x$           & Cheia secretă a utilizatorului $x$ (derivată din parolă) \\
-        $K_{x,y}$       & Cheia de sesiune temporară între $x$ și $y$              \\
-        $\{m\}_K$       & Mesajul $m$ criptat simetric cu cheia $K$                \\
-        $T_{x,y}$       & Tichetul (Ticket) emis pentru $x$ să acceseze $y$        \\
-        $A_x$           & Autentificatorul (Authenticator) generat de client       \\
-        $TS$            & Timestamp (pentru prevenirea atacurilor \textit{replay}) \\
+        $C, S$          & Clientul (utilizator) și Serverul (serviciul dorit)               \\
+        $AS, TGS$       & Componentele KDC: Authentication Server și Ticket-Granting Server \\
+        $K_x$           & Cheia secretă a lui $x$ (ex: hash-ul parolei)                     \\
+        $\{M\}_K$       & Mesajul $M$ criptat cu cheia $K$                                  \\
+        $TGT$           & \textit{Ticket-Granting Ticket} (Permisul universal)              \\
+        $T_{Serv}$      & Tichetul de Serviciu (pentru acces final)                         \\
+        $Auth$          & Autentificatorul (dovada identității pe loc, conține timestamp)   \\
         \hline
     \end{tabular}
 \end{center}
 \begin{multicols}{2}
 
-\subsection{Fluxul de Execuție (Model SPMD)}
+\subsection{Fluxul Protocolului (Cele 3 Faze)}
 
-Protocolul funcționează asincron, prin schimburi de mesaje inițiate de client. Acesta poate fi descompus în trei faze logice distincte.
+Protocolul este împărțit în trei etape logice.
 
-% --- FAZA 1 ---
-\subsubsection{Faza 1: Autentificarea Inițială (AS Exchange)}
-În această etapă, clientul își dovedește identitatea față de KDC fără a transmite parola prin rețea.
+\subsubsection{Faza 1: Autentificarea Inițială (Logarea)}
+\textbf{Scop:} Clientul vrea să demonstreze cine este, fără a trimite parola prin rețea.
+\begin{itemize}
+    \item \textbf{Pasul A:} Clientul trimite numele său către AS. Mesajul este în clar (necriptat), deoarece nu conține secrete.
+          \[ C \rightarrow AS: \quad \text{"Sunt utilizatorul } C \text{ și vreau să vorbesc cu TGS"} \]
 
-\textbf{Pasul 1 (Cererea):} Clientul trimite un mesaj în clar către AS, solicitând acces la TGS.
-\begin{equation}
-    c \rightarrow AS: \quad ID_c, ID_{tgs}, TS_1
-\end{equation}
+    \item \textbf{Pasul B:} AS verifică dacă $C$ există în baza de date. Dacă da, creează o cheie de sesiune ($K_{Sess}$) și îi trimite clientului două lucruri:
+          \begin{enumerate}
+              \item Cheia de sesiune, criptată cu parola clientului: \{$K_{Sess}\}_{K_C}$.
+              \item TGT-ul, criptat cu cheia secretă a TGS (pe care clientul nu o poate citi): \{$C, K_{Sess}, \text{Valabilitate}\}_{K_{TGS}}$.
+          \end{enumerate}
 
-\textbf{Pasul 2 (Răspunsul):} AS verifică identitatea în baza de date. Dacă este validă, generează o cheie de sesiune $K_{c,TGS}$ și răspunde cu două pachete de date:
-\begin{equation}
-    AS \rightarrow c: \quad \{K_{c,TGS}, TS_2, Life, TGS\}_{K_c}, \quad T_{c,TGS}
-\end{equation}
+          \textbf{Rezultat:} Doar clientul real își poate decripta pachetul (știind parola) pentru a obține cheia de sesiune. TGT-ul rămâne un "pachet misterios" pe care îl păstrează.
+\end{itemize}
 
-\textit{Nota bene:} Clientul poate decripta primul pachet doar dacă introduce parola corectă (care generează $K_c$). Al doilea pachet, $T_{c,TGS}$ (Ticket-Granting Ticket), este criptat cu cheia secretă a TGS și este opac pentru client.
-
-% --- FAZA 2 ---
 \subsubsection{Faza 2: Obținerea Tichetului de Serviciu (TGS Exchange)}
-Clientul deține acum un TGT și vrea să acceseze un serviciu specific $s$.
+\textbf{Scop:} Clientul are TGT-ul (permisul) și vrea să acceseze un server specific ($S$), de exemplu un Server de Fișiere.
 
-\textbf{Pasul 3 (Cererea):} Clientul prezintă TGT-ul și un Autentificator proaspăt generat.
-\begin{equation}
-    c \rightarrow TGS: \quad s, \quad T_{c,TGS}, \quad A_c
-\end{equation}
-Unde $A_c = \{c, TS_3\}_{K_{c,TGS}}$. Acest lucru dovedește că cel care trimite tichetul este posesorul legitim al cheii de sesiune.
+\begin{itemize}
+    \item \textbf{Pasul C:} Clientul trimite către TGS permisul (TGT) și un "Autentificator" (dovadă că e posesorul legitim, conținând ora curentă).
+          \[ C \rightarrow TGS: \quad S, \quad TGT, \quad \{C, \text{Timestamp}\}_{K_{Sess}} \]
 
-\textbf{Pasul 4 (Răspunsul):} TGS decriptează TGT-ul, verifică validitatea și emite un tichet pentru serverul final.
-\begin{equation}
-    TGS \rightarrow c: \quad \{K_{c,s}, s, TS_4\}_{K_{c,TGS}}, \quad T_{c,s}
-\end{equation}
+    \item \textbf{Pasul D:} TGS decriptează TGT-ul (fiind criptat cu cheia sa), extrage cheia de sesiune și verifică Autentificatorul. Dacă totul e valid, emite un tichet pentru Serverul $S$:
+          \[ TGS \rightarrow C: \quad \{T_{Serviciu}\}_{K_{Sess}} \]
+          Unde $T_{Serviciu}$ este criptat cu cheia Serverului $S$.
+\end{itemize}
 
-% --- FAZA 3 ---
-\subsubsection{Faza 3: Accesarea Serviciului (CS Exchange)}
-Clientul are acum un tichet valid pentru serverul $s$.
+\subsubsection{Faza 3: Accesarea Serviciului (Client-Server Exchange)}
+\textbf{Scop:} Clientul prezintă tichetul final serverului.
 
-\textbf{Pasul 5 (Autentificarea):} Clientul trimite tichetul și un nou autentificator către server.
-\begin{equation}
-    c \rightarrow s: \quad T_{c,s}, \quad A_c'
-\end{equation}
+\begin{itemize}
+    \item \textbf{Pasul E:} Clientul trimite tichetul și un nou autentificator către server.
+          \[ C \rightarrow S: \quad T_{Serviciu}, \quad \{C, \text{Timestamp}\}_{K_{C,S}} \]
 
-\textbf{Pasul 6 (Confirmarea Mutuală - Opțional):} Serverul confirmă identitatea sa clientului, demonstrând că a putut decripta tichetul și a extras timestamp-ul.
-\begin{equation}
-    s \rightarrow c: \quad \{TS_5 + 1\}_{K_{c,s}}
-\end{equation}
+    \item \textbf{Pasul F:} Serverul decriptează tichetul (folosind propria cheie secretă), află cheia de sesiune partajată și verifică timestamp-ul. Dacă diferența de timp este mică (ex: sub 5 minute), accesul este permis.
+\end{itemize}
 
-Această arhitectură distribuie încrederea: $AS$ garantează identitatea inițială, iar $TGS$ garantează dreptul de acces la resurse, minimizând expunerea cheilor pe termen lung.
+\subsection{De ce este acest sistem sigur?}
+\begin{enumerate}
+    \item \textbf{Parola nu circulă niciodată:} Ea este folosită doar local pe stația clientului pentru a decripta primul mesaj de la AS.
+    \item \textbf{Protecție la Replay:} Datorită Autentificatorului care conține \textit{Timestamp}, un atacator care interceptează pachetele nu le poate refolosi mai târziu, deoarece serverul va respinge cererile cu ora veche.
+    \item \textbf{Minimizarea riscului:} Serverul de aplicație nu trebuie să știe parola utilizatorului, ci doar să poată decripta tichetul emis de KDC.
+\end{enumerate}
+
+\subsection{Replicarea și Administrarea Datelor}
+Pentru a asigura disponibilitatea și toleranța la defecte (fault tolerance), Kerberos nu rulează pe un singur nod, ci folosește o arhitectură distribuită de tip \textbf{Master-Slave} pentru baza de date de credențiale.
+
+\subsubsection{Arhitectura Master-Slave}
+Baza de date este replicată pe mai multe servere KDC:
+\begin{itemize}
+    \item \textbf{Master KDC:} Este singurul nod care permite operații de scriere (adăugare utilizatori, schimbare parole). Acesta gestionează copia autoritativă a bazei de date.
+    \item \textbf{Slave KDCs:} Sunt noduri \textit{Read-Only}. Acestea primesc periodic actualizări de la Master. Clientul se poate autentifica la orice Slave disponibil. Dacă Master-ul pică, autentificarea funcționează în continuare prin Slave-uri, dar nu se pot schimba parole.
+\end{itemize}
+
+Această separare este crucială pentru performanța sistemului distribuit, deoarece cererile de citire (autentificările frecvente) sunt balansate între multiple replici, în timp ce scrierile (rare) sunt centralizate pentru consistență.
+
+\subsubsection{Serviciul de Administrare (KDBM)}
+Modificările asupra bazei de date se fac exclusiv prin protocolul administrativ, gestionat de procesul \texttt{kadmind}. Deoarece baza de date conține cheile secrete ale tuturor utilizatorilor, acest serviciu rulează doar pe nodul Master și necesită o autentificare strictă.
