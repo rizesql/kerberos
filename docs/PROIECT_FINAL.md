@@ -12,10 +12,10 @@ Documentația proiectului constă, per ansamblu, în realizarea unui material pe
 * **Descriere clară a algoritmului (algoritmilor) serial** abordat
 * **Descrierea variantei distribuite** a algoritmului în format SPMD
 * **Analiză teoretică** și discuția următoarelor aspecte:
-    * **[1 p]** analiză corectitudine (e.g. care sunt premisele esențiale pentru funcționarea algoritmului?)
-    * **[1 p]** analiză complexitate timp / mesaj
-    * **[0.5 p]** avantaje / dezavantaje care apar cu variația numărului de noduri
-    * **[1.5 p]** exemplificare pentru 1-2 topologii la alegere.
+  * **[1 p]** analiză corectitudine (e.g. care sunt premisele esențiale pentru funcționarea algoritmului?)
+  * **[1 p]** analiză complexitate timp / mesaj
+  * **[0.5 p]** avantaje / dezavantaje care apar cu variația numărului de noduri
+  * **[1.5 p]** exemplificare pentru 1-2 topologii la alegere.
 
 Chiar dacă vreunul din punctele de mai sus nu se regăsesc în totalitate în cadrul lucrării alese, atunci pe baza suportului de curs și altor materiale se vor documenta corespunzător. **Redactarea se va realiza în limba română!**
 
