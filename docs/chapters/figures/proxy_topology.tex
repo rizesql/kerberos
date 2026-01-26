@@ -1,0 +1,49 @@
+\begin{tikzpicture}[
+    node distance=2.5cm,
+    % --- STILURI (Compacte pentru o coloană) ---
+    entity/.style={
+            draw=blue!40!black,
+            top color=white,
+            bottom color=blue!10,
+            rounded corners=3pt,
+            align=center,
+            minimum height=1cm,
+            minimum width=2cm,
+            drop shadow,
+            font=\bfseries\small
+        },
+    flow/.style={
+    ->,
+    >={Stealth[length=3mm]},
+    thick,
+    color=blue!40!black
+    },
+    lbl/.style={
+            midway,
+            fill=white,
+            inner sep=1pt,
+            font=\tiny\sffamily,
+            text=blue!50!black,
+            align=center,
+            draw=blue!10,
+            rounded corners=2pt
+        }
+    ]
+
+    % --- POZIȚIONARE PE VERTICALĂ (Flux Liniar) ---
+    \node[entity] (client) {Client\\(User)};
+    \node[entity, below=1.5cm of client] (print) {Service A\\(ex: Print Server)};
+    \node[entity, below=1.5cm of print] (file) {Service B\\(ex: File Server)};
+
+    % --- FLUX ---
+
+    % 1. Client -> Print
+    \draw[flow] (client) -- node[lbl] {1. Trimite Tichet Proxy\\(Permisiune de citire)} (print);
+
+    % 2. Print -> File
+    \draw[flow] (print) -- node[lbl] {2. Accesează fișierul\\ \textit{"în numele Clientului"}} (file);
+
+    % 3. Confirmare
+    \draw[flow, dashed, color=gray] (file) to[out=160, in=200] node[lbl, left] {3. Transfer Date} (print);
+
+\end{tikzpicture}

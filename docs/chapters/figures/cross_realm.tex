@@ -1,0 +1,94 @@
+\begin{tikzpicture}[
+    node distance=2.5cm,
+    % --- STILURI VIZUALE ---
+    kdc/.style={
+            draw=blue!40!black,
+            top color=white,
+            bottom color=blue!15,
+            rounded corners=3pt,
+            align=center,
+            minimum height=1.5cm,
+            minimum width=2.5cm,
+            drop shadow,
+            font=\bfseries
+        },
+    entity/.style={
+            draw=gray!60!black,
+            top color=white,
+            bottom color=gray!10,
+            rectangle,
+            rounded corners,
+            minimum height=1cm,
+            minimum width=2cm,
+            align=center,
+            drop shadow,
+            font=\small
+        },
+    flow/.style={
+    ->,
+    >={Stealth[length=3mm]},
+    thick,
+    color=blue!40!black,
+    rounded corners
+    },
+    lbl/.style={
+            midway,
+            fill=white,
+            inner sep=1.5pt,
+            font=\scriptsize\bfseries,
+            text=blue!40!black,
+            align=center,
+            draw=blue!10,
+            rounded corners=2pt
+        },
+    realm/.style={
+            draw,
+            dashed,
+            rounded corners=10pt,
+            inner sep=15pt,
+            thick
+        }
+    ]
+
+    % --- POZIȚIONARE NODURI ---
+    % REALM A (Stânga)
+    \node[kdc] (kdcA) at (0, 4) {KDC A\\(Local Realm)};
+    \node[entity] (client) at (0, 0) {Client @ A};
+
+    % REALM B (Dreapta)
+    \node[kdc] (kdcB) at (10, 4) {KDC B\\(Remote Realm)};
+    \node[entity] (server) at (10, 0) {Server @ B};
+
+    % --- FUNDALURI REALMURI ---
+    \begin{scope}[on background layer]
+        \node[realm, draw=red!40, fill=red!5, fit=(kdcA) (client)] (boxA) {};
+        \node[anchor=north west, color=red!60!black, font=\bfseries] at (boxA.north west) {Realm A};
+
+        \node[realm, draw=green!40!black, fill=green!5, fit=(kdcB) (server)] (boxB) {};
+        \node[anchor=north east, color=green!40!black, font=\bfseries] at (boxB.north east) {Realm B};
+    \end{scope}
+
+    % --- CONEXIUNI ȘI FLUX CORECTAT ---
+
+    % 0. TRUST LINK
+    \draw[<->, dashed, ultra thick, color=orange!60!black] (kdcA) --
+    node[midway, above, font=\bfseries\small, color=orange!60!black] {Inter-Realm Trust Key}
+    (kdcB);
+
+    % 1. Cerere TGT pentru Remote
+    \draw[flow] (client) --
+    node[lbl, left] {1. Cere TGT\\pentru Realm B}
+    (kdcA);
+
+    % 2. Prezentare TGT la KDC B
+    \draw[flow] (client) --
+    node[lbl, sloped, above] {2. Prezintă Remote TGT\\(Obține $T_{Serv}$)}
+    (kdcB);
+
+    % 3. Acces Final (CORECTAT: Client -> Server, nu KDC -> Server)
+    % Tichetul este prezentat de Client
+    \draw[flow] (client) --
+    node[lbl, below] {3. Acces Final\\cu $T_{Serv}$}
+    (server);
+
+\end{tikzpicture}

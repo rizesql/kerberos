@@ -28,128 +28,36 @@ Din punct de vedere computațional, complexitatea este redusă ($O(N)$), deoarec
 
 Aceasta permite unui client dintr-un domeniu (Realm A) să acceseze servicii dintr-un alt domeniu (Realm B), cu condiția să existe o relație de încredere (cheie partajată) între cele două servere KDC.
 
-\begin{figure*}[t] % figure* extinde figura pe toată lățimea paginii (ambele coloane)
+\begin{figure*}[t]
     \centering
-    \resizebox{0.9\textwidth}{!}{ % Scalăm la 90% din lățimea totală a paginii
-        \begin{tikzpicture}[
-            node distance=2.5cm,
-            % --- STILURI VIZUALE ---
-            % 1. KDC (Serverele de încredere)
-            kdc/.style={
-                    draw=blue!40!black,
-                    top color=white,
-                    bottom color=blue!15,
-                    rounded corners=3pt,
-                    align=center,
-                    minimum height=1.5cm,
-                    minimum width=2.5cm,
-                    drop shadow,
-                    font=\bfseries
-                },
-            % 2. Entități User/Server
-            entity/.style={
-                    draw=gray!60!black,
-                    top color=white,
-                    bottom color=gray!10,
-                    rectangle,
-                    rounded corners,
-                    minimum height=1cm,
-                    minimum width=2cm,
-                    align=center,
-                    drop shadow,
-                    font=\small
-                },
-            % 3. Săgeți de flux
-            flow/.style={
-            ->,
-            >={Stealth[length=3mm]},
-            thick,
-            color=blue!40!black,
-            rounded corners
-            },
-            % 4. Etichete pe săgeți
-            lbl/.style={
-                    midway,
-                    fill=white,
-                    inner sep=1.5pt,
-                    font=\scriptsize\bfseries,
-                    text=blue!40!black,
-                    align=center,
-                    draw=blue!10,
-                    rounded corners=2pt
-                },
-            % 5. Fundal Realm (Domeniu)
-            realm/.style={
-                    draw,
-                    dashed,
-                    rounded corners=10pt,
-                    inner sep=15pt,
-                    thick
-                }
-            ]
-
-            % --- POZIȚIONARE NODURI ---
-
-            % REALM A (Stânga)
-            \node[kdc] (kdcA) at (0, 4) {KDC A\\(Local Realm)};
-            \node[entity] (client) at (0, 0) {Client @ A};
-
-            % REALM B (Dreapta) - Distanță mare pe orizontală
-            \node[kdc] (kdcB) at (10, 4) {KDC B\\(Remote Realm)};
-            \node[entity] (server) at (10, 0) {Server @ B};
-
-            % --- FUNDALURI REALMURI (Chenare) ---
-            \begin{scope}[on background layer]
-                % Chenar Realm A (Roșu pal)
-                \node[realm, draw=red!40, fill=red!5, fit=(kdcA) (client)] (boxA) {};
-                \node[anchor=north west, color=red!60!black, font=\bfseries] at (boxA.north west) {Realm A};
-
-                % Chenar Realm B (Verde pal)
-                \node[realm, draw=green!40!black, fill=green!5, fit=(kdcB) (server)] (boxB) {};
-                \node[anchor=north east, color=green!40!black, font=\bfseries] at (boxB.north east) {Realm B};
-            \end{scope}
-
-            % --- CONEXIUNI ȘI FLUX ---
-
-            % 0. TRUST LINK (Cheia partajată între KDC-uri)
-            \draw[<->, dashed, ultra thick, color=orange!60!black] (kdcA) --
-            node[midway, above, font=\bfseries\small, color=orange!60!black] {Inter-Realm Trust Key}
-            (kdcB);
-
-            % 1. Cerere TGT pentru Remote
-            \draw[flow] (client) --
-            node[lbl, left] {1. Cere TGT\\pentru Realm B}
-            (kdcA);
-
-            % 2. Emitere Remote TGT (Simbolic, se întoarce la Client)
-            % Nu desenăm săgeata de retur pentru a nu aglomera, se subînțelege din pasul 1
-
-            % 3. Prezentare TGT la KDC B (Diagonala)
-            \draw[flow] (client) --
-            node[lbl, sloped, above] {2. Prezintă Remote TGT\\(emis de A)}
-            (kdcB);
-
-            % 4. Emitere Tichet Serviciu (KDC B -> Client -> Server)
-            % Simplificăm vizual: KDC B -> Server (prin Client logic)
-            \draw[flow] (kdcB) --
-            node[lbl, right] {3. Emite $T_{Serv}$}
-            (server);
-
-            % Săgeata finală Client -> Server
-            \draw[flow] (client) --
-            node[lbl, below] {4. Acces Final\\cu $T_{Serv}$}
-            (server);
-
-        \end{tikzpicture}
+    \resizebox{0.9\textwidth}{!}{
+        \input{chapters/figures/cross_realm.tex}
     }
     \caption{Topologie Cross-Realm: Autentificare între domenii diferite}
     \label{fig:cross_realm}
 \end{figure*}
+
 În figura \ref{fig:cross_realm}, fluxul este modificat astfel:
 \begin{enumerate}
     \item Clientul cere KDC-ului local un tichet pentru KDC-ul străin.
     \item KDC-ul local emite un "Remote TGT" criptat cu cheia inter-realm.
-    \item Clientul prezintă acest TGT direct KDC-ului străin.
-    \item KDC-ul străin emite tichetul de serviciu final.
+    \item Clientul prezintă acest TGT direct KDC-ului străin și primește tichetul de serviciu ($T_{Serv}$).
+    \item Clientul prezintă $T_{Serv}$ serverului final pentru acces.
 \end{enumerate}
 Această arhitectură permite scalarea globală a sistemului fără a centraliza toți utilizatorii într-o singură bază de date.
+
+\subsubsection{Topologia de Delegare (Proxy Authentication)}
+
+O inovație majoră descrisă în lucrarea originală Athena \cite{steiner1988kerberos} este mecanismul de \textit{Proxy}. Aceasta rezolvă problema în care un serviciu intermediar trebuie să acceseze o resursă în numele utilizatorului (ex: un Print Server care trebuie să citească un fișier protejat de pe un File Server).
+Kerberos permite emiterea unui tichet "Proxy" care deleagă identitatea utilizatorului către un serviciu terț, fără a divulga parola sau cheia secretă.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\linewidth}{!}{
+        \input{chapters/figures/proxy_topology.tex}
+    }
+    \caption{Topologie Proxy: Delegarea drepturilor între servicii}
+    \label{fig:proxy_topology}
+\end{figure}
+
+Această arhitectură simplifică managementul accesului în sisteme distribuite complexe (Open Network Systems), eliminând necesitatea ca utilizatorul să se autentifice separat la fiecare nod din lanțul de procesare.
