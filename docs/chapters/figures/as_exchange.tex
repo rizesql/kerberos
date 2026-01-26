@@ -1,0 +1,80 @@
+\begin{tikzpicture}[
+        node distance=3.2cm, % Distanță compactă, identică cu TGS
+        % --- DEFINIȚII DE STIL (Copy-Paste din TGS pentru consistență) ---
+        % 1. Actorii (Client/Server): Gradient Albastru + Umbră
+        entity/.style={
+                draw=blue!40!black,
+                top color=white,
+                bottom color=blue!10,
+                rounded corners=3pt,
+                align=center,
+                minimum height=1cm,
+                minimum width=1.8cm,
+                drop shadow,
+                font=\bfseries\small
+            },
+        % 2. Mesajele de pe săgeți
+        msg/.style={
+                midway,
+                above,
+                font=\scriptsize,
+                color=black!80
+            },
+        % 3. Notele Interne (Chenar): Galben pal + Border Portocaliu
+        process/.style={
+                draw=orange!50!black,
+                fill=orange!5,
+                rounded corners=2pt,
+                align=left,
+                font=\tiny\sffamily,
+                inner sep=4pt,
+                drop shadow={opacity=0.3}
+            },
+        % 4. Formulele Matematice de sub săgeți
+        mathnote/.style={
+                below=0.1cm,
+                font=\tiny,
+                color=black!70
+            }
+    ]
+
+    % 1. Actorii
+    \node[entity] (client) {Client ($C$)};
+    \node[entity, right=of client] (as) {Auth Server};
+
+    % 2. Liniile vieții
+    \draw[thick, gray!50] (client) -- ++(0,-5.5) coordinate (c_end);
+    \draw[thick, gray!50] (as) -- ++(0,-5.5) coordinate (as_end);
+
+    % 3. Mesajul 1 (Cerere)
+    \draw[-{Stealth[length=3mm]}, thick, color=blue!40!black]
+    ($(client)+(0,-1)$) --
+    node[msg] {1. Cerere: $ID_C, ID_{TGS}$}
+    ($(as)+(0,-1.1)$);
+
+    % --- CHENARUL CERUT (Procesare Internă AS) ---
+    % Folosim stilul 'process'
+    \node[process, below=0.3cm of as, anchor=north] {
+        $\bullet$ Verificare în DB\\
+        $\bullet$ Generare $K_{Sess}$\\
+        $\bullet$ Creare $TGT$
+    };
+
+    % 4. Mesajul 2 (Răspuns)
+    \draw[-{Stealth[length=3mm]}, thick, color=blue!40!black]
+    ($(as)+(0,-4)$) --
+    node[msg, align=center] {2. Răspuns: $\{K_{Sess}\}_{K_C}$ \\ $+ TGT$}
+    ($(client)+(0,-4)$);
+
+    % Explicatie Decriptare (Stânga)
+    \node[mathnote, align=center] at ($(client)+(0,-4)$) {
+        \textit{*Decriptează}\\
+        \textit{pt. $K_{Sess}$}
+    };
+
+    % Explicatie TGT (Dreapta) - Poziționată pe mijlocul distanței pentru simetrie
+    \node[mathnote] at ($(client)!0.5!(as) + (0,-4)$) {
+    $TGT = \{C, K_{Sess}, Life\}_{K_{TGS}}$
+    };
+
+\end{tikzpicture}

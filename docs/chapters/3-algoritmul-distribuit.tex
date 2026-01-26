@@ -14,7 +14,7 @@ Pentru descrierea formală, vom folosi următoarele simboluri simplificate, conf
         $C, S$          & Clientul (utilizator) și Serverul (serviciul dorit)               \\
         $AS, TGS$       & Componentele KDC: Authentication Server și Ticket-Granting Server \\
         $K_x$           & Cheia secretă a lui $x$ (ex: hash-ul parolei)                     \\
-        $\{M\}_K$       & Mesajul $M$ criptat cu cheia $K$                                  \\
+        \{M\}\_K        & Mesajul $M$ criptat cu cheia $K$                                  \\
         $TGT$           & \textit{Ticket-Granting Ticket} (Permisul universal)              \\
         $T_{Serv}$      & Tichetul de Serviciu (pentru acces final)                         \\
         $Auth$          & Autentificatorul (dovada identității pe loc, conține timestamp)   \\
@@ -29,37 +29,49 @@ Protocolul este împărțit în trei etape logice.
 
 \subsubsection{Faza 1: Autentificarea Inițială (Logarea)}
 \textbf{Scop:} Clientul vrea să demonstreze cine este, fără a trimite parola prin rețea.
-\begin{itemize}
-    \item \textbf{Pasul A:} Clientul trimite numele său către AS. Mesajul este în clar (necriptat), deoarece nu conține secrete.
-          \[ C \rightarrow AS: \quad \text{"Sunt utilizatorul } C \text{ și vreau să vorbesc cu TGS"} \]
 
-    \item \textbf{Pasul B:} AS verifică dacă $C$ există în baza de date. Dacă da, creează o cheie de sesiune ($K_{Sess}$) și îi trimite clientului două lucruri:
-          \begin{enumerate}
-              \item Cheia de sesiune, criptată cu parola clientului: \{$K_{Sess}\}_{K_C}$.
-              \item TGT-ul, criptat cu cheia secretă a TGS (pe care clientul nu o poate citi): \{$C, K_{Sess}, \text{Valabilitate}\}_{K_{TGS}}$.
-          \end{enumerate}
+În această fază, clientul inițiază protocolul pentru a obține credențialele necesare interacțiunii ulterioare. Figura de mai jos ilustrează schimbul de mesaje, unde axa timpului curge de sus în jos.
 
-          \textbf{Rezultat:} Doar clientul real își poate decripta pachetul (știind parola) pentru a obține cheia de sesiune. TGT-ul rămâne un "pachet misterios" pe care îl păstrează.
-\end{itemize}
+\begin{figure}[H]
+    \centering
+    % \resizebox forțează diagrama să se micșoreze la lățimea coloanei curente
+    \resizebox{\linewidth}{!}{
+        \centering
+        \input{chapters/figures/as_exchange.tex}
+    } % <--- Aceasta este acolada care lipsea!
+    \caption{Diagrama de secvență pentru Autentificarea Inițială (AS Exchange)}
+    \label{fig:as_exchange}
+\end{figure}
+
+După acest schimb, clientul deține cheia de sesiune decriptată și TGT-ul opac, fiind pregătit pentru Faza 2.
+
 
 \subsubsection{Faza 2: Obținerea Tichetului de Serviciu (TGS Exchange)}
 \textbf{Scop:} Clientul are TGT-ul (permisul) și vrea să acceseze un server specific ($S$), de exemplu un Server de Fișiere.
 
-\begin{itemize}
-    \item \textbf{Pasul C:} Clientul trimite către TGS permisul (TGT) și un "Autentificator" (dovadă că e posesorul legitim, conținând ora curentă).
-          \[ C \rightarrow TGS: \quad S, \quad TGT, \quad \{C, \text{Timestamp}\}_{K_{Sess}} \]
+Utilizând cheia de sesiune obținută anterior, clientul generează un \textit{Autentificator} pentru a dovedi că este posesorul legitim al TGT-ului.
 
-    \item \textbf{Pasul D:} TGS decriptează TGT-ul (fiind criptat cu cheia sa), extrage cheia de sesiune și verifică Autentificatorul. Dacă totul e valid, emite un tichet pentru Serverul $S$:
-          \[ TGS \rightarrow C: \quad \{T_{Serviciu}\}_{K_{Sess}} \]
-          Unde $T_{Serviciu}$ este criptat cu cheia Serverului $S$.
-\end{itemize}
+\begin{figure}[H]
+    \centering
+    % Resizebox asigură că diagrama încape perfect în coloană
+    \resizebox{\linewidth}{!}{
+        \input{chapters/figures/tgs_exchange.tex}
+    }
+    \caption{Diagrama de secvență pentru TGS Exchange}
+    \label{fig:tgs_exchange}
+\end{figure}
+
+TGS-ul verifică timestamp-ul din autentificator pentru a preveni atacurile de tip \textit{replay}. Dacă totul este valid, clientul primește noul tichet ($T_{Serv}$) și noua cheie de sesiune ($K_{C,S}$).
 
 \subsubsection{Faza 3: Accesarea Serviciului (Client-Server Exchange)}
 \textbf{Scop:} Clientul prezintă tichetul final serverului.
 
 \begin{itemize}
     \item \textbf{Pasul E:} Clientul trimite tichetul și un nou autentificator către server.
-          \[ C \rightarrow S: \quad T_{Serviciu}, \quad \{C, \text{Timestamp}\}_{K_{C,S}} \]
+          % Corecție: Fără $ în interiorul \[ \], și acoladele de grupare pentru indice scrise simplu { }
+          \[
+              C \rightarrow S: \quad T_{Serviciu}, \quad \{ C, \text{Timestamp} \}_{K_{C,S}}
+          \]
 
     \item \textbf{Pasul F:} Serverul decriptează tichetul (folosind propria cheie secretă), află cheia de sesiune partajată și verifică timestamp-ul. Dacă diferența de timp este mică (ex: sub 5 minute), accesul este permis.
 \end{itemize}
