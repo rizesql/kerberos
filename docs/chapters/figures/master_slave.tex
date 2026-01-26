@@ -1,0 +1,63 @@
+\begin{tikzpicture}[
+    node distance=2cm,
+    % --- STILURI (Păstrate din conversația anterioară) ---
+    kdc/.style={
+            draw=blue!40!black,
+            top color=white,
+            bottom color=blue!10,
+            rounded corners=3pt,
+            align=center,
+            minimum height=2.5cm, % Dimensiunea mare
+            minimum width=3cm,
+            drop shadow,
+            font=\bfseries\small
+        },
+    db/.style={
+            cylinder,
+            shape border rotate=90,
+            draw=orange!50!black,
+            fill=orange!10,
+            aspect=0.25,
+            minimum height=0.8cm,
+            minimum width=1cm,
+            font=\tiny\bfseries,
+            align=center
+        },
+    propArrow/.style={
+    -{Stealth[length=3mm]},
+    thick,
+    color=orange!60!black
+    },
+    msg/.style={
+            midway,
+            font=\scriptsize,
+            color=black!80,
+            sloped
+        }
+    ]
+
+    % 1. Nodul MASTER - Textul urcat folosind spațiu gol dedesubt
+    \node[kdc] (master) {Master KDC\\[1.0cm]};
+
+    % Baza de date poziționată sub bordura de sus (north) a master-ului
+    % Am ajustat la 1.1cm pentru a pica exact sub text
+    \node[db, below=1.0cm of master.north] (masterDB) {DB\\(RW)};
+
+    % 2. Nodurile SLAVE
+    \node[kdc, below left=2cm and 0.5cm of master] (slave1) {\\[1.0cm]Slave KDC 1};
+    \node[db, below=0.3cm of slave1.north] (slave1DB) {DB\\(RO)};
+
+    \node[kdc, below right=2cm and 0.5cm of master] (slave2) {\\[1.0cm]Slave KDC 2};
+    \node[db, below=0.3cm of slave2.north] (slave2DB) {DB\\(RO)};
+
+    % 3. Conexiuni
+    \draw[propArrow] (masterDB.south) -- node[msg, above] {Propagare (kprop)} (slave1DB.north);
+    \draw[propArrow] (masterDB.south) -- node[msg, above] {Propagare (kprop)} (slave2DB.north);
+
+    % Legendă
+    \node[below=0.5cm of slave1.south west, anchor=west, font=\tiny, color=darkgray, align=left] {
+        *RW = Read-Write (Scriere/Citire)\\
+        *RO = Read-Only (Doar Citire)
+    };
+
+\end{tikzpicture}

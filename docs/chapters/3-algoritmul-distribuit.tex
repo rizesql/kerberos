@@ -91,14 +91,38 @@ TGS-ul verifică timestamp-ul din autentificator pentru a preveni atacurile de t
 \subsection{Replicarea și Administrarea Datelor}
 Pentru a asigura disponibilitatea și toleranța la defecte (fault tolerance), Kerberos nu rulează pe un singur nod, ci folosește o arhitectură distribuită de tip \textbf{Master-Slave} pentru baza de date de credențiale.
 
-\subsubsection{Arhitectura Master-Slave}
-Baza de date este replicată pe mai multe servere KDC:
+\subsubsection{Arhitectura de Replicare (Master-Slave)}
+Baza de date Kerberos este centralizată logic, dar replicată fizic pentru disponibilitate. Arhitectura implică:
 \begin{itemize}
-    \item \textbf{Master KDC:} Este singurul nod care permite operații de scriere (adăugare utilizatori, schimbare parole). Acesta gestionează copia autoritativă a bazei de date.
-    \item \textbf{Slave KDCs:} Sunt noduri \textit{Read-Only}. Acestea primesc periodic actualizări de la Master. Clientul se poate autentifica la orice Slave disponibil. Dacă Master-ul pică, autentificarea funcționează în continuare prin Slave-uri, dar nu se pot schimba parole.
+    \item \textbf{Master KDC:} Deține copia autoritativă (RW). Orice modificare (schimbare parolă, adăugare utilizator) se face aici.
+    \item \textbf{Slave KDCs:} Dețin copii \textit{Read-Only}. Acestea servesc cererile de autentificare (AS/TGS) pentru a reduce încărcarea pe Master.
 \end{itemize}
 
-Această separare este crucială pentru performanța sistemului distribuit, deoarece cererile de citire (autentificările frecvente) sunt balansate între multiple replici, în timp ce scrierile (rare) sunt centralizate pentru consistență.
+\begin{figure}[H]
+    \centering
+    % Resizebox pentru a încadra figura compact în coloană
+    \resizebox{0.9\linewidth}{!}{
+        \input{chapters/figures/master_slave.tex}
+    }
+    \caption{Arhitectura de Replicare Master-Slave}
+    \label{fig:master_slave}
+\end{figure}
 
-\subsubsection{Serviciul de Administrare (KDBM)}
-Modificările asupra bazei de date se fac exclusiv prin protocolul administrativ, gestionat de procesul \texttt{kadmind}. Deoarece baza de date conține cheile secrete ale tuturor utilizatorilor, acest serviciu rulează doar pe nodul Master și necesită o autentificare strictă.
+\textbf{Mecanismul de Propagare:}
+Conform specificației originale \cite{steiner1988kerberos}, consistența datelor este menținută prin propagare periodică (uzual la fiecare oră). Procesul de pe Master (\texttt{kprop}) trimite baza de date completă către procesele pereche (\texttt{kpropd}) de pe sclave.
+Pentru integritate, transferul este precedat de un \textbf{checksum criptat} cu cheia mașinii Master. Sclavul acceptă actualizarea doar dacă checksum-ul calculat local corespunde cu cel decriptat.
+
+\subsubsection{Protocolul de Administrare (KDBM)}
+Administrarea se face printr-un serviciu dedicat, \textbf{KDBM} (Kerberos Database Management), accesat prin utilitarele \texttt{kadmin} (pentru administratori) și \texttt{kpasswd} (pentru utilizatori simpli).
+
+Acest serviciu are o particularitate de securitate critică:
+\begin{quote}
+    \textit{"KDBM nu acceptă tichete emise prin TGS, ci impune ca utilizatorul să se autentifice direct prin serviciul AS."}
+\end{quote}
+
+\textbf{Justificare de Securitate:}
+Această constrângere impune utilizatorului să introducă parola \textbf{chiar acum}, demonstrând prezența fizică.
+\begin{itemize}
+    \item Dacă s-ar permite folosirea unui TGT (care este stocat în memorie/cache), un atacator ar putea schimba parola unui utilizator care și-a lăsat stația de lucru nesupravegheată ("Passerby Attack").
+    \item Forțând re-introducerea parolei pentru operațiuni sensibile, Kerberos mitigează riscul furtului de sesiune pentru acțiuni administrative.
+\end{itemize}
