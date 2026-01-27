@@ -2,7 +2,8 @@
 
 Conform cerințelor de proiectare, evaluăm protocolul din perspectiva corectitudinii, performanței și scalabilității.
 
-\subsection{Analiza Corectitudinii}
+% CERINȚA 1: Analiză corectitudine
+\subsection{Analiză Corectitudine}
 Corectitudinea protocolului Kerberos se bazează pe două premise esențiale care diferențiază acest sistem distribuit de varianta serială:
 
 \begin{enumerate}
@@ -10,7 +11,8 @@ Corectitudinea protocolului Kerberos se bazează pe două premise esențiale car
     \item \textbf{Integritatea TTP (Trusted Third Party):} Securitatea întregului sistem depinde de faptul că KDC-ul nu este compromis. Deoarece KDC-ul stochează cheile secrete ale tuturor principalilor, compromiterea acestuia permite unui atacator să genereze orice tichet (atac de tip "Golden Ticket"), permițând impersonarea oricărui utilizator către orice serviciu.
 \end{enumerate}
 
-\subsection{Complexitate (Mesaje și Timp)}
+% CERINȚA 2: Analiză complexitate timp / mesaj
+\subsection{Analiză Complexitate Timp / Mesaj}
 Pentru o sesiune completă de autentificare și acces la un serviciu ("Cold Start"), complexitatea mesajelor este constantă, totalizând 6 pachete de rețea:
 
 \begin{itemize}
@@ -24,9 +26,27 @@ Pentru o sesiune completă de autentificare și acces la un serviciu ("Cold Star
 Din punct de vedere al complexității comunicației, protocolul este extrem de eficient, având un număr constant de pași (\textbf{$O(1)$}), indiferent de numărul total de utilizatori din sistem.
 Din punct de vedere computațional, încărcarea asupra procesorului este redusă, deoarece protocolul utilizează exclusiv criptare simetrică (DES/AES), care este semnificativ mai rapidă decât operațiile matematice complexe necesare în criptarea asimetrică (RSA/ECC).
 
-\subsection{Topologii și Scalabilitate (Cross-Realm)}
-Într-o implementare simplă, un singur KDC poate deveni un gât de sticlă. Pe lângă replicarea Master-Slave (discutată în Secțiunea 3.4), Kerberos suportă scalarea administrativă prin mecanismul \textbf{Cross-Realm Authentication}.
+% CERINȚA 3: Avantaje / dezavantaje cu variația numărului de noduri
+\subsection{Comportamentul la Variația Numărului de Noduri (Replicarea Master-Slave)}
 
+Scalarea sistemului prin adăugarea de noduri suplimentare (Slave KDCs) prezintă următoarele caracteristici tehnice:
+
+\begin{itemize}
+    \item \textbf{Avantaje (Read Throughput):}
+          Adăugarea de servere Slave crește liniar capacitatea de procesare a cererilor de autentificare (AS/TGS). Deoarece majoritatea traficului în Kerberos este de tip \textit{Read-Only} (verificarea credențialelor și emiterea de tichete), sistemul scalează eficient pentru un număr mare de utilizatori simultani.
+
+    \item \textbf{Dezavantaje (Write Bottleneck \& Propagation Lag):}
+          Indiferent de numărul de noduri Slave adăugate, arhitectura impune o limitare critică:
+          \begin{enumerate}
+              \item \textbf{Scrieri Exclusive pe Master:} Orice modificare a bazei de date (schimbarea parolei, adăugarea unui utilizator) trebuie procesată \textbf{exclusiv} de KDC-ul Master. Astfel, Master-ul rămâne un \textit{Single Point of Failure} (SPOF) pentru operațiunile de scriere. Dacă Master-ul cade, utilizatorii se pot autentifica (prin Slave), dar nu își pot schimba parolele.
+              \item \textbf{Latența de Propagare:} Există un decalaj (\textit{propagation lag}) între momentul scrierii pe Master și actualizarea tuturor Slave-urilor. În acest interval, un utilizator ar putea să se autentifice pe un Slave folosind vechea parolă, deși a schimbat-o pe Master.
+          \end{enumerate}
+\end{itemize}
+% CERINȚA 4: Exemplificare topologii
+\subsection{Exemplificare Topologii}
+Pe lângă arhitectura standard (Client-Server-KDC), protocolul suportă topologii complexe pentru medii enterprise.
+
+\subsubsection{Topologie Cross-Realm}
 Aceasta permite unui client dintr-un domeniu (Realm A) să acceseze servicii dintr-un alt domeniu (Realm B), cu condiția să existe o relație de încredere (cheie partajată) între cele două servere KDC.
 
 \begin{figure*}[t]
@@ -45,12 +65,9 @@ Aceasta permite unui client dintr-un domeniu (Realm A) să acceseze servicii din
     \item Clientul prezintă acest TGT direct KDC-ului străin și primește tichetul de serviciu ($T_{Serv}$).
     \item Clientul prezintă $T_{Serv}$ serverului final pentru acces.
 \end{enumerate}
-Această arhitectură permite scalarea globală a sistemului fără a centraliza toți utilizatorii într-o singură bază de date.
 
-\subsubsection{Topologia de Delegare (Proxy Authentication)}
-
-O inovație majoră descrisă în lucrarea originală Athena \cite{steiner1988kerberos} este mecanismul de \textit{Proxy}. Aceasta rezolvă problema în care un serviciu intermediar trebuie să acceseze o resursă în numele utilizatorului (ex: un Print Server care trebuie să citească un fișier protejat de pe un File Server).
-Kerberos permite emiterea unui tichet "Proxy" care deleagă identitatea utilizatorului către un serviciu terț, fără a divulga parola sau cheia secretă.
+\subsubsection{Topologie de Delegare (Proxy)}
+O inovație majoră descrisă în lucrarea originală Athena \cite{steiner1988kerberos} este mecanismul de \textit{Proxy}. Aceasta rezolvă problema în care un serviciu intermediar trebuie să acceseze o resursă în numele utilizatorului.
 
 \begin{figure}[H]
     \centering
@@ -61,4 +78,4 @@ Kerberos permite emiterea unui tichet "Proxy" care deleagă identitatea utilizat
     \label{fig:proxy_topology}
 \end{figure}
 
-Această arhitectură simplifică managementul accesului în sisteme distribuite complexe (Open Network Systems), eliminând necesitatea ca utilizatorul să se autentifice separat la fiecare nod din lanțul de procesare.
+Această arhitectură simplifică managementul accesului în sisteme distribuite complexe, eliminând necesitatea autentificării multiple.
