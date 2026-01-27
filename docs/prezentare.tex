@@ -338,4 +338,104 @@
 
 \end{frame}
 
+\begin{frame}{Analiza Scalabilității (Variația Nodurilor)}
+  \small
+
+  \begin{columns}[t] % Aliniere la partea de sus
+
+    % --- COLOANA STÂNGA (Avantaje - Citire) ---
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Scalabilitate la Citire (Autentificare)}
+        \begin{itemize}
+          \item \textbf{Creștere Liniară:} Adăugarea de noduri \textit{Slave} multiplică direct capacitatea de procesare a cererilor de logare.
+          \item \textbf{Performanță:} Sistemul poate susține mii de cereri simultane prin balansarea încărcării între Slave-uri.
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    % --- COLOANA DREAPTA (Limitări - Scriere) ---
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Limitare la Scriere (Modificări)}
+        \begin{itemize}
+          \item \textbf{Master Exclusiv:} Doar KDC-ul Master are drept de scriere în baza de date.
+          \item \textbf{SPOF:} Master-ul rămâne un \textit{Single Point of Failure} pentru operațiuni administrative (ex: schimbarea parolei).
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+
+  \end{columns}
+
+
+  % --- BLOC FINAL (Propagation Lag) ---
+  \begin{exampleblock}{Fenomen: Propagation Lag}
+    Există o întârziere inerentă între momentul scrierii pe Master și actualizarea tuturor Slave-urilor.
+
+    \textit{Consecință:} Un utilizator ar putea folosi vechea parolă pe un Slave neactualizat timp de câteva secunde/minute.
+  \end{exampleblock}
+
+\end{frame}
+
+\begin{frame}{Demo Live și Concluzii}
+  \small
+
+  % 1. Setup-ul Demo-ului (Arhitectura)
+  \begin{block}{Arhitectura Implementării (Limbaj: Go)}
+    Sistem distribuit format din 3 noduri distincte care comunică prin HTTP:
+    \begin{columns}[t]
+      \begin{column}{0.33\textwidth}
+        \centering
+        \textbf{1. KDC Server}\\
+        \texttt{:8080}\\
+        \textit{(SQLite DB)}
+      \end{column}
+      \begin{column}{0.33\textwidth}
+        \centering
+        \textbf{2. Client App}\\
+        \texttt{:3000}\\
+        \textit{(Web Frontend)}
+      \end{column}
+      \begin{column}{0.33\textwidth}
+        \centering
+        \textbf{3. API Server}\\
+        \texttt{:9090}\\
+        \textit{(Resursă Protejată)}
+      \end{column}
+    \end{columns}
+  \end{block}
+
+  \vspace{0.3cm}
+
+  % 2. Scenariul de Test (Fluxul din UI)
+  \begin{columns}[c]
+    \begin{column}{0.55\textwidth}
+      \textbf{Fluxul de Demonstrație (Step-by-Step):}
+      \begin{enumerate}
+        \item \textbf{Login (AS Exchange):}
+              UI $\rightarrow$ KDC. Obținere TGT (parola rămâne locală).
+        \item \textbf{Get Service Ticket (TGS Exchange):}
+              Folosire TGT $\rightarrow$ Obținere tichet pentru \texttt{:9090}.
+        \item \textbf{Access Resource (AP Exchange):}
+              Apel către API Server cu tichetul valid.
+      \end{enumerate}
+    \end{column}
+
+    \begin{column}{0.45\textwidth}
+      \begin{alertblock}{Insight Cheie}
+        \textbf{API Server NU contactează KDC!}
+
+        Verificarea tichetului se face \textbf{offline} (folosind cheia secretă partajată) și Replay Cache.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.3cm}
+
+  % 3. Final
+  \centering
+  \textbf{Concluzie:} Kerberos permite autentificare sigură pe rețele nesigure, fără a expune secretele.
+
+
+\end{frame}
+
+
 \end{document}
