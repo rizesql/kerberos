@@ -1,13 +1,23 @@
 \section{Algoritmul Distribuit: Protocolul Kerberos}
 
-Kerberos rezolvă problema autentificării într-o rețea nesigură folosind un \textit{Trusted Third Party} (KDC). Pentru a face protocolul ușor de înțeles, îl putem privi ca pe un sistem de bilete: utilizatorul nu prezintă parola la fiecare serviciu, ci obține un "permis universal" (TGT) pe care îl schimbă ulterior pentru "bilete specifice" de acces.
+\subsection{Fundamente Teoretice (Modelul Needham-Schroeder)}
+Protocolul Kerberos nu a apărut într-un vid, ci este o implementare și o rafinare a modelului de autentificare cu cheie simetrică propus de \textbf{Needham și Schroeder} \cite{needham1978using}.
+
+Conceptul central preluat este cel de \textit{Trusted Third Party} (TTP): un arbitru central în care toți clienții au încredere absolută. Sistemul funcționează pe premisa că, dacă KDC-ul confirmă identitatea unui utilizator, serviciile din rețea acceptă această judecată ca fiind corectă.
+
+\textbf{Inovația Kerberos (Timestamp vs. Nonce):}
+O modificare fundamentală adusă modelului original este mecanismul de prevenire a atacurilor de tip \textit{Replay} (unde un atacator interceptează un pachet valid și îl retrimite ulterior).
+În timp ce Needham-Schroeder se baza pe \textit{nonce}-uri (numere aleatoare unice) și un schimb suplimentar de mesaje pentru a verifica prospețimea, Kerberos a introdus \textbf{Timestamp-urile} (marcaje temporale). Aceasta reduce traficul de rețea, dar introduce o dependență critică de sincronizarea ceasurilor.
+
+\subsection{Descriere Generală}
+Kerberos rezolvă problema autentificării într-o rețea nesigură folosind acest KDC. Pentru a face protocolul ușor de înțeles, îl putem privi ca pe un sistem de bilete: utilizatorul nu prezintă parola la fiecare serviciu, ci obține un "permis universal" (TGT) pe care îl schimbă ulterior pentru "bilete specifice" de acces.
 
 \subsection{Notații Utilizate}
 Pentru descrierea formală, vom folosi următoarele simboluri simplificate, conform lucrării originale \cite{steiner1988kerberos}:
 
 % Nu mai închide multicols aici
 
-\begin{table*}[t] % table* forțează afișarea pe toată lățimea, [t] îl pune sus
+\begin{table*}[t] % table* forțează afișarea pe toată lățimea
     \centering
     \begin{tabular}{|c|l|}
         \hline

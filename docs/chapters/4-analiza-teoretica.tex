@@ -21,7 +21,8 @@ Pentru o sesiune completă de autentificare și acces la un serviciu ("Cold Star
 
 \textbf{Optimizare (Cache):} Ulterior, pentru accesarea aceluiași serviciu, costul scade la \textbf{2 mesaje}, deoarece clientul refolosește tichetul de serviciu ($T_{Serv}$) până la expirarea acestuia (uzual 8 ore). Pentru accesarea unui \textit{serviciu nou}, costul este de \textbf{4 mesaje} (TGS + CS), deoarece se refolosește TGT-ul.
 
-Din punct de vedere computațional, complexitatea este redusă ($O(N)$), deoarece protocolul utilizează exclusiv criptare simetrică (DES/AES), care este ordine de mărime mai rapidă decât criptarea asimetrică (RSA/ECC).
+Din punct de vedere al complexității comunicației, protocolul este extrem de eficient, având un număr constant de pași (\textbf{$O(1)$}), indiferent de numărul total de utilizatori din sistem.
+Din punct de vedere computațional, încărcarea asupra procesorului este redusă, deoarece protocolul utilizează exclusiv criptare simetrică (DES/AES), care este semnificativ mai rapidă decât operațiile matematice complexe necesare în criptarea asimetrică (RSA/ECC).
 
 \subsection{Topologii și Scalabilitate (Cross-Realm)}
 Într-o implementare simplă, un singur KDC poate deveni un gât de sticlă. Pe lângă replicarea Master-Slave (discutată în Secțiunea 3.4), Kerberos suportă scalarea administrativă prin mecanismul \textbf{Cross-Realm Authentication}.

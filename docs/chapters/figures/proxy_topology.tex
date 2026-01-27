@@ -41,7 +41,8 @@
     \draw[flow] (client) -- node[lbl] {1. Trimite Tichet Proxy\\(Permisiune de citire)} (print);
 
     % 2. Print -> File
-    \draw[flow] (print) -- node[lbl] {2. Accesează fișierul\\ \textit{"în numele Clientului"}} (file);
+    % Mică rafinare la text pentru precizie maximă
+    \draw[flow] (print) -- node[lbl] {2. Prezintă Tichetul\\(Cere acces fișier)} (file);
 
     % 3. Confirmare
     \draw[flow, dashed, color=gray] (file) to[out=160, in=200] node[lbl, left] {3. Transfer Date} (print);
