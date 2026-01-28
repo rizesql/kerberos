@@ -1,6 +1,6 @@
 export GO111MODULE=on
 APP=kerberos
-APP_EXECUTABLE="./out/$(APP)"
+APP_EXECUTABLE="./out/kdc"
 ALL_PACKAGES=$(shell go list ./... | grep -v /vendor)
 SHELL := /bin/bash # Use bash syntax
 
@@ -47,9 +47,14 @@ coverage: ## displays test coverage report in html mode
 	go tool cover -html=coverage.out
 
 ## Build
-build: ## build the go application
+build: ## build all the go applications
 	mkdir -p out/
-	go build -o $(APP_EXECUTABLE) ./cmd/kdc
+	for dir in cmd/*; do \
+		if [ -d "$$dir" ]; then \
+			name=$$(basename $$dir); \
+			go build -o out/$$name ./$$dir; \
+		fi \
+	done
 	@echo "Build passed"
 
 run: ## runs the go binary. usage: make run [args...]

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -87,4 +88,26 @@ func (p *Principal) UnmarshalJSON(data []byte) error {
 
 	*p = pr
 	return nil
+}
+
+func Parse(s string) (Primary, Instance, Realm, error) {
+	var primary, instance, realm string
+
+	if atIdx := strings.LastIndex(s, "@"); atIdx != -1 {
+		realm = s[atIdx+1:]
+		s = s[:atIdx]
+	}
+
+	if slashIdx := strings.Index(s, "/"); slashIdx != -1 {
+		primary = s[:slashIdx]
+		instance = s[slashIdx+1:]
+	} else {
+		primary = s
+	}
+
+	if primary == "" {
+		return "", "", "", ErrPrincipalEmptyPrimary
+	}
+
+	return Primary(primary), Instance(instance), Realm(realm), nil
 }
