@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"strings"
 
 	"github.com/rizesql/kerberos/internal/crypto"
 	"github.com/rizesql/kerberos/internal/kdb"
@@ -61,31 +60,30 @@ var Cmd = &cli.Command{
 		}
 
 		// Parse principal
-		var primary, instance string
+		primary, instance, realm, err := protocol.Parse(principalStr)
+		if err != nil {
+			return fmt.Errorf("invalid principal: %w", err)
+		}
+
 		if instanceStr != "" {
-			if strings.Contains(principalStr, "/") {
+			if instance != "" {
 				return fmt.Errorf("cannot specify --instance when principal name (%s) already contains an instance", principalStr)
 			}
-			primary = principalStr
-			instance = instanceStr
-		} else {
-			parts := strings.Split(principalStr, "/")
-			if len(parts) == 1 {
-				primary = parts[0]
-			} else if len(parts) == 2 {
-				primary = parts[0]
-				instance = parts[1]
-			} else {
-				return fmt.Errorf("invalid principal format: %s", principalStr)
+			instance = protocol.Instance(instanceStr)
+		}
+
+		if realmStr != "" {
+			if realm != "" {
+				return fmt.Errorf("cannot specify --realm when principal name (%s) already contains a realm", principalStr)
 			}
+			realm = protocol.Realm(realmStr)
 		}
 
-		// Validate realm
-		if realmStr == "" {
-			return fmt.Errorf("realm cannot be empty")
+		if realm == "" {
+			return fmt.Errorf("realm cannot be empty (specify via --realm or in principal string)")
 		}
 
-		logger := logging.New()
+		logger := logging.Noop()
 		db, err := kdb.New(kdb.Config{DSN: dbPath, Logger: logger})
 		if err != nil {
 			return fmt.Errorf("failed to open database: %w", err)
@@ -95,7 +93,7 @@ var Cmd = &cli.Command{
 		var keyBytes []byte
 		if password != "" {
 			// Salt = Realm + Primary + Instance (if any)
-			salt := realmStr + primary + instance
+			salt := string(realm) + string(primary) + string(instance)
 			sk, err := crypto.DeriveKey(password, salt)
 			if err != nil {
 				return fmt.Errorf("failed to derive key: %w", err)
@@ -113,7 +111,7 @@ var Cmd = &cli.Command{
 		}
 
 		// Create Principal
-		p, err := protocol.NewPrincipal(protocol.Primary(primary), protocol.Instance(instance), protocol.Realm(realmStr))
+		p, err := protocol.NewPrincipal(primary, instance, realm)
 		if err != nil {
 			return fmt.Errorf("invalid principal data: %w", err)
 		}

@@ -461,77 +461,20 @@ This uses `crypto.DeriveKey()` to derive the krbtgt key from the secret.
 
 ---
 
-### 4.2 Add Principals (`cmd/kadmin/add` - YOU NEED TO BUILD THIS)
+### 4.2 Add Principals (`cmd/kadmin`)
+
+Use the `kadmin` tool to manage users and services in the database.
 
 **Usage:**
 ```bash
 # Add a user (derives key from password)
 ./kadmin add --db kdc.db --principal alice --realm ATHENA.MIT.EDU --password secret123
 
+# Add a service using separate --instance flag
+./kadmin add --db kdc.db --principal http --instance api-server --realm ATHENA.MIT.EDU --password api-secret
+
 # Add a service (uses hex key directly)
-./kadmin add --db kdc.db --principal http/api-server --realm ATHENA.MIT.EDU --key <32-byte-hex>
-```
-
-**Implementation (~30 lines)** - follow the pattern in `cmd/kdc/setup/setup.go`:
-
-```go
-package add
-
-import (
-    "context"
-    "fmt"
-
-    "github.com/rizesql/kerberos/internal/crypto"
-    "github.com/rizesql/kerberos/internal/kdb"
-    "github.com/rizesql/kerberos/internal/o11y/logging"
-    "github.com/rizesql/kerberos/internal/protocol"
-)
-
-type Config struct {
-    DBPath    string
-    Principal string // e.g., "alice" or "http/api-server"
-    Instance  string // e.g., "" or "api-server"
-    Realm     string
-    Password  string // for users
-    KeyHex    string // for services (alternative to password)
-}
-
-func Run(ctx context.Context, cfg Config) error {
-    logger := logging.New()
-
-    db, err := kdb.New(kdb.Config{DSN: cfg.DBPath, Logger: logger})
-    if err != nil {
-        return fmt.Errorf("failed to open db: %w", err)
-    }
-    defer db.Close()
-
-    // Derive key from password OR use provided hex key
-    var keyBytes []byte
-    if cfg.Password != "" {
-        key, err := crypto.DeriveKey(cfg.Password, cfg.Realm+cfg.Principal+cfg.Realm)
-        if err != nil {
-            return fmt.Errorf("failed to derive key: %w", err)
-        }
-        keyBytes = key.Expose()
-    } else {
-        keyBytes, _ = hex.DecodeString(cfg.KeyHex)
-    }
-
-    // Create principal
-    _, err = kdb.Query.CreatePrincipal(ctx, db, kdb.CreatePrincipalParams{
-        PrimaryName: cfg.Principal,
-        Instance:    cfg.Instance,
-        Realm:       cfg.Realm,
-        KeyBytes:    keyBytes,
-        Kvno:        1,
-    })
-    if err != nil {
-        return fmt.Errorf("failed to create principal: %w", err)
-    }
-
-    logger.Info("Principal created", "principal", fmt.Sprintf("%s/%s@%s", cfg.Principal, cfg.Instance, cfg.Realm))
-    return nil
-}
+./kadmin add --db kdc.db --principal http/api-server --realm ATHENA.MIT.EDU --key <64-hex-chars>
 ```
 
 ---
@@ -550,7 +493,7 @@ func Run(ctx context.Context, cfg Config) error {
 
 # 4. Start everything
 ./kdc start --db kdc.db --realm ATHENA.MIT.EDU &
-./api start --key $(./kadmin get-key http/api-server) &
+./api start --key $(./kadmin get-key --db kdc.db --realm ATHENA.MIT.EDU http/api-server) &
 ./client start
 ```
 

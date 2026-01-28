@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/rizesql/kerberos/cmd/kadmin/add"
+	"github.com/rizesql/kerberos/cmd/kadmin/getkey"
 	"github.com/urfave/cli/v3"
 )
 
@@ -15,6 +16,7 @@ func main() {
 		Usage: "Kerberos Administration Tool",
 		Commands: []*cli.Command{
 			add.Cmd,
+			getkey.Cmd,
 		},
 	}
 
