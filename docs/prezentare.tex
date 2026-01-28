@@ -98,7 +98,22 @@
   \end{algorithm}
 \end{frame}
 
-\begin{frame}{Faza 1: Autentificarea Inițială (AS Exchange)}
+\begin{frame}{Algoritmul Distribuit (SPMD)}
+  \begin{block}{Tranziția la Sistem Distribuit}
+    Spre deosebire de algoritmul serial, varianta \textbf{SPMD} (Single Program, Multiple Data) presupune noduri care rulează aceeași logică de protocol, dar operează pe date diferite.
+  \end{block}
+
+  \vspace{0.3cm}
+
+  \textbf{Fluxul celor 3 faze (Mesaje în Rețea):}
+  \begin{enumerate}
+    \item \textbf{AS Exchange:} Obținere TGT.
+    \item \textbf{TGS Exchange:} Obținere Tichet de Serviciu.
+    \item \textbf{AP Exchange:} Accesare Resursă.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Faza 1 (SPMD): Autentificarea Inițială (AS Exchange)}
 
   \begin{columns}[c] % Aliniere verticală pe centru
 
@@ -137,7 +152,7 @@
 
 \end{frame}
 
-\begin{frame}{Faza 2: Obținerea Accesului (TGS Exchange)}
+\begin{frame}{Faza 2 (SPMD): Obținerea Accesului (TGS Exchange)}
 
 
 
@@ -176,7 +191,7 @@
 
 \end{frame}
 
-\begin{frame}{Faza 3: Accesarea Serviciului (Client-Server)}
+\begin{frame}{Faza 3 (SPMD): Accesarea Serviciului (Client-Server)}
 
   \begin{columns}[c] % Aliniere verticală pe centru
 
@@ -403,8 +418,8 @@
   \small
 
   % 1. Setup-ul Demo-ului (Arhitectura)
-  \begin{block}{Arhitectura Implementării (Limbaj: Go)}
-    Sistem distribuit format din 3 noduri distincte care comunică prin HTTP:
+  \begin{block}{Arhitectura Implementării (Sistem Distribuit SPMD)}
+    Sistem format din noduri care respectă protocolul, comunicând prin HTTP:
     \begin{columns}[t]
       \begin{column}{0.33\textwidth}
         \centering
