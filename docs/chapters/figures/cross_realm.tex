@@ -1,0 +1,112 @@
+\begin{tikzpicture}[
+    node distance=2.5cm,
+    % --- STILURI ---
+    kdc/.style={
+            draw=blue!40!black,
+            top color=white,
+            bottom color=blue!15,
+            rounded corners=3pt,
+            align=center,
+            minimum height=1.5cm,
+            minimum width=2.5cm,
+            drop shadow,
+            font=\bfseries
+        },
+    entity/.style={
+            draw=gray!60!black,
+            top color=white,
+            bottom color=gray!10,
+            rectangle,
+            rounded corners,
+            minimum height=1cm,
+            minimum width=2cm,
+            align=center,
+            drop shadow,
+            font=\small
+        },
+    flow/.style={
+    ->,
+    >={Stealth[length=3mm]},
+    thick,
+    color=blue!40!black,
+    rounded corners
+    },
+    % Stil pentru RĂSPUNS (Săgeata înapoi) - Linie punctată sau gri pentru diferențiere
+    return_flow/.style={
+    ->,
+    >={Stealth[length=3mm]},
+    thick,
+    dashed, % Punctată ca să se distingă de cerere
+    color=blue!40!black
+    },
+    lbl/.style={
+            midway,
+            fill=white,
+            inner sep=1.5pt,
+            font=\tiny\bfseries, % Font mai mic ca să încapă dublul de text
+            text=blue!40!black,
+            align=center,
+            draw=blue!10,
+            rounded corners=2pt,
+            opacity=0.95
+        },
+    realm/.style={
+            draw,
+            dashed,
+            rounded corners=10pt,
+            inner sep=15pt,
+            thick
+        }
+    ]
+
+    % --- POZIȚIONARE NODURI ---
+    \node[kdc] (kdcA) at (0, 4) {KDC A\\(Local)};
+    \node[entity] (client) at (0, 0) {Client @ A};
+
+    \node[kdc] (kdcB) at (10, 4) {KDC B\\(Remote)};
+    \node[entity] (server) at (10, 0) {Server @ B};
+
+    % --- FUNDALURI ---
+    \begin{scope}[on background layer]
+        \node[realm, draw=red!40, fill=red!5, fit=(kdcA) (client)] (boxA) {};
+        \node[anchor=north west, color=red!60!black, font=\bfseries] at (boxA.north west) {Realm A};
+
+        \node[realm, draw=green!40!black, fill=green!5, fit=(kdcB) (server)] (boxB) {};
+        \node[anchor=north east, color=green!40!black, font=\bfseries] at (boxB.north east) {Realm B};
+    \end{scope}
+
+    % --- CONEXIUNI ---
+
+    % 0. TRUST LINK
+    \draw[<->, dashed, ultra thick, color=orange!60!black] (kdcA) --
+    node[midway, above, font=\bfseries\small, color=orange!60!black] {Inter-Realm Trust Key}
+    (kdcB);
+
+    % --- PASUL 1: LOCAL (Cerere + Răspuns) ---
+    % 1a. Cerere (Up)
+    \draw[flow] (client) to[bend left=20]
+    node[lbl, left] {1a. Cere TGT\\pt Realm B}
+    (kdcA);
+
+    % 1b. Răspuns (Down) - Săgeata înapoi
+    \draw[return_flow] (kdcA) to[bend left=20]
+    node[lbl, right] {1b. Primește\\Remote TGT}
+    (client);
+
+    % --- PASUL 2: REMOTE (Cerere + Răspuns) ---
+    % 2a. Cerere (Diagonal Up)
+    \draw[flow] (client) to[bend left=10]
+    node[lbl, sloped, above, pos=0.6] {2a. Prezintă Remote TGT}
+    (kdcB);
+
+    % 2b. Răspuns (Diagonal Down) - Săgeata înapoi
+    \draw[return_flow] (kdcB) to[bend left=10]
+    node[lbl, sloped, below, pos=0.6] {2b. Primește $T_{Serv}$}
+    (client);
+
+    % --- PASUL 3: ACCES ---
+    \draw[flow] (client) --
+    node[lbl, below] {3. Acces Final\\cu $T_{Serv}$}
+    (server);
+
+\end{tikzpicture}

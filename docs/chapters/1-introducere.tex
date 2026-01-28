@@ -1,10 +1,34 @@
+
 \section{Introducere}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce vitae eros sit amet sem ornare
-varius. Duis eget felis eget risus posuere luctus. Integer odio metus, eleifend at nunc
-vitae, rutrum fermentum leo. Quisque rutrum vitae risus nec porta. Nunc eu orci euismod,
-ornare risus at, accumsan augue. Ut tincidunt pharetra convallis. Maecenas ut pretium ex.
-Morbi tellus dui, viverra quis augue at, tincidunt hendrerit orci. Lorem ipsum dolor sit amet,
-consectetur adipiscing elit. Aliquam quis sollicitudin nunc. Sed sollicitudin purus
-dapibus mi fringilla, nec tincidunt nunc eleifend. Nam ut molestie erat. Integer eros dolor,
-viverra quis massa at, auctor. \cite{steiner1988kerberos}
+\subsection{Context: Mediul "Open Network"}
+Apariția sistemelor distribuite, precum proiectul \textit{Athena} de la MIT, a marcat o schimbare de paradigmă de la sistemele monolitice (Time-Sharing Systems) la arhitecturi de rețea deschise. Într-un astfel de mediu, stațiile de lucru (workstations) nu sunt fizic securizate, iar rețeaua care le conectează este vulnerabilă la interceptări.
+
+Conform specificațiilor oficiale IETF \cite{rfc4120}, într-o rețea nesigură, un atacator poate monitoriza traficul ("sniffing") și poate intercepta pachetele de date. Astfel, orice protocol care se bazează pe transmiterea parolei în clar, sau chiar a hash-ului acesteia, este compromis din start. Mai mult, serverele nu pot avea încredere implicită în identitatea clienților doar pe baza adresei de rețea, care poate fi falsificată ("spoofing").
+
+\subsection{Definirea Problemei}
+Problema fundamentală pe care o adresăm este: \textit{"Cum poate un utilizator să își dovedească identitatea unui serviciu de rețea fără a trimite parola prin canalul de comunicație nesigur și fără a stoca chei secrete pe fiecare server în parte?"}
+
+Într-un sistem serial, nucleul sistemului de operare (Kernel) controlează atât terminalul utilizatorului, cât și resursa accesată, oferind o cale sigură (Trusted Path). Într-un sistem distribuit, această cale dispare. Avem nevoie de un mecanism care să garanteze identitatea părților comunicante fără a expune secretele acestora.
+
+\subsection{Soluția Propusă: Trusted Third Party (TTP)}
+Kerberos introduce conceptul de \textbf{Trusted Third Party} (TTP). În loc ca fiecare server să verifice parola utilizatorului (ceea ce ar implica stocarea parolelor pe sute de servere, mărind suprafața de atac), există o singură autoritate centrală în care toți au încredere: \textbf{KDC} (Key Distribution Center).
+
+Modelul funcționează similar cu un sistem de legitimații: utilizatorul prezintă dovada identității o singură dată autorității centrale și primește un "tichet" criptat. Acest tichet este apoi prezentat diverselor servicii, care îl acceptă deoarece au încredere în semnătura emitentului (KDC) \cite{steiner1988kerberos}.
+
+\subsection{Obiectivele Protocolului}
+Proiectarea Kerberos a urmărit patru obiective majore, esențiale pentru un sistem de autentificare robust:
+\begin{enumerate}
+    \item \textbf{Securitate:} Un atacator care interceptează traficul nu trebuie să poată obține informații necesare pentru a impersona un utilizator.
+    \item \textbf{Fiabilitate (Reliability):} Sistemul de autentificare nu trebuie să devină un punct unic de eșec (Single Point of Failure) care să blocheze accesul la întreaga rețea. Acest lucru se realizează prin arhitectura distribuită Master-Slave.
+    \item \textbf{Transparență:} Utilizatorul trebuie să introducă parola o singură dată (Single Sign-On - SSO), restul procesului de obținere a tichetelor fiind invizibil.
+    \item \textbf{Scalabilitate:} Sistemul trebuie să suporte un număr mare de clienți și servere și să permită interconectarea între domenii administrative diferite (Cross-Realm Authentication) \cite{rfc4120}.
+\end{enumerate}
+
+\subsection{Concepte Cheie}
+Pentru a înțelege funcționarea algoritmului distribuit descris în Capitolul 3, definim următorii termeni:
+\begin{itemize}
+    \item \textbf{Principals:} Entitățile care comunică (Utilizatori sau Servicii).
+    \item \textbf{Tickets:} Structuri de date criptate care servesc drept permise de acces temporare.
+    \item \textbf{Authenticators:} Informații generate pe loc (ce conțin timestamp-uri) pentru a dovedi că cel care prezintă tichetul este proprietarul legitim al acestuia.
+\end{itemize}

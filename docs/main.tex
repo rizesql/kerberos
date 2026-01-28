@@ -15,6 +15,11 @@
 \usepackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
 \usepackage{amsmath}
 \usepackage{multicol}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{shadows, positioning, arrows.meta, calc, shapes, fit, backgrounds}
 
 \addbibresource{bibliography.bib}
 
@@ -25,23 +30,25 @@
 \author{Prioteasa Liviu Florentin, Rizescu Iulian Ștefan, Ţacu Ștefan Darius}
 
 \begin{document}
-  \begin{center}
-    \Large \textbf{\@title}
-  \end{center}
+\begin{center}
+  \Large \textbf{\@title}
+\end{center}
 
-  \begin{center}
-    \@author
-    \vspace{1cm}
-  \end{center}
+\begin{center}
+  \@author
+  \vspace{1cm}
+\end{center}
 
-  \begin{multicols}{2}
-    \input{chapters/0-abstract}
-    \input{chapters/1-introducere}
-    \input{chapters/2-algoritmul-serial}
-    \input{chapters/3-algoritmul-distribuit}
-    \input{chapters/4-analiza-teoretica}
 
-    \printbibliography
-    [heading=bibintoc]
-  \end{multicols}
+\begin{multicols}{2}
+  \input{chapters/0-abstract}
+  \input{chapters/1-introducere}
+  \input{chapters/2-algoritmul-serial}
+  % \newpage
+  \input{chapters/3-algoritmul-distribuit}
+  \input{chapters/4-analiza-teoretica}
+
+  \printbibliography
+  [heading=bibintoc]
+\end{multicols}
 \end{document}

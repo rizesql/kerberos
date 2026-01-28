@@ -1,10 +1,138 @@
-\section{Algoritmul Distribuit}
+\section{Algoritmul Distribuit: Protocolul Kerberos}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce vitae eros sit amet sem ornare
-varius. Duis eget felis eget risus posuere luctus. Integer odio metus, eleifend at nunc
-vitae, rutrum fermentum leo. Quisque rutrum vitae risus nec porta. Nunc eu orci euismod,
-ornare risus at, accumsan augue. Ut tincidunt pharetra convallis. Maecenas ut pretium ex.
-Morbi tellus dui, viverra quis augue at, tincidunt hendrerit orci. Lorem ipsum dolor sit amet,
-consectetur adipiscing elit. Aliquam quis sollicitudin nunc. Sed sollicitudin purus
-dapibus mi fringilla, nec tincidunt nunc eleifend. Nam ut molestie erat. Integer eros dolor,
-viverra quis massa at, auctor.
+\subsection{Fundamente Teoretice (Modelul Needham-Schroeder)}
+Protocolul Kerberos nu a apărut într-un vid, ci este o implementare și o rafinare a modelului de autentificare cu cheie simetrică propus de \textbf{Needham și Schroeder} \cite{needham1978using}.
+
+Conceptul central preluat este cel de \textit{Trusted Third Party} (TTP): un arbitru central în care toți clienții au încredere absolută. Sistemul funcționează pe premisa că, dacă KDC-ul confirmă identitatea unui utilizator, serviciile din rețea acceptă această judecată ca fiind corectă.
+
+\textbf{Inovația Kerberos (Timestamp vs. Nonce):}
+O modificare fundamentală adusă modelului original este mecanismul de prevenire a atacurilor de tip \textit{Replay} (unde un atacator interceptează un pachet valid și îl retrimite ulterior).
+În timp ce Needham-Schroeder se baza pe \textit{nonce}-uri (numere aleatoare unice) și un schimb suplimentar de mesaje pentru a verifica prospețimea, Kerberos a introdus \textbf{Timestamp-urile} (marcaje temporale). Aceasta reduce traficul de rețea, dar introduce o dependență critică de sincronizarea ceasurilor.
+
+\subsection{Descriere Generală}
+Kerberos rezolvă problema autentificării într-o rețea nesigură folosind acest KDC. Pentru a face protocolul ușor de înțeles, îl putem privi ca pe un sistem de bilete: utilizatorul nu prezintă parola la fiecare serviciu, ci obține un "permis universal" (TGT) pe care îl schimbă ulterior pentru "bilete specifice" de acces.
+
+\subsection{Notații Utilizate}
+Pentru descrierea formală, vom folosi următoarele simboluri simplificate, conform lucrării originale \cite{steiner1988kerberos}:
+
+% Nu mai închide multicols aici
+
+\begin{table*}[t] % table* forțează afișarea pe toată lățimea
+    \centering
+    \begin{tabular}{|c|l|}
+        \hline
+        \textbf{Simbol} & \textbf{Semnificație}                                             \\
+        \hline
+        $C, S$          & Clientul (utilizator) și Serverul (serviciul dorit)               \\
+        $AS, TGS$       & Componentele KDC: Authentication Server și Ticket-Granting Server \\
+        $K_x$           & Cheia secretă a lui $x$ (ex: hash-ul parolei)                     \\
+        $\{M\}_K$       & Mesajul $M$ criptat cu cheia $K$                                  \\
+        $TGT$           & \textit{Ticket-Granting Ticket} (Permisul universal)              \\
+        $T_{Serv}$      & Tichetul de Serviciu (pentru acces final)                         \\
+        $Auth$          & Autentificatorul (dovada identității pe loc, conține timestamp)   \\
+        \hline
+    \end{tabular}
+    \caption{Notații și Simboluri Kerberos}
+    \label{tab:notatii}
+\end{table*}
+
+% Continuă textul normal în două coloane...
+
+\subsection{Fluxul Protocolului (Cele 3 Faze)}
+
+Protocolul este împărțit în trei etape logice.
+
+\subsubsection{Faza 1: Autentificarea Inițială (Logarea)}
+\textbf{Scop:} Clientul vrea să demonstreze cine este, fără a trimite parola prin rețea.
+
+În această fază, clientul inițiază protocolul pentru a obține credențialele necesare interacțiunii ulterioare. Figura de mai jos ilustrează schimbul de mesaje, unde axa timpului curge de sus în jos.
+
+\begin{figure}[H]
+    \centering
+    % \resizebox forțează diagrama să se micșoreze la lățimea coloanei curente
+    \resizebox{\linewidth}{!}{
+        \centering
+        \input{chapters/figures/as_exchange.tex}
+    } % <--- Aceasta este acolada care lipsea!
+    \caption{Diagrama de secvență pentru Autentificarea Inițială (AS Exchange)}
+    \label{fig:as_exchange}
+\end{figure}
+
+După acest schimb, clientul deține cheia de sesiune decriptată și TGT-ul opac, fiind pregătit pentru Faza 2.
+
+
+\subsubsection{Faza 2: Obținerea Tichetului de Serviciu (TGS Exchange)}
+\textbf{Scop:} Clientul are TGT-ul (permisul) și vrea să acceseze un server specific ($S$), de exemplu un Server de Fișiere.
+
+Utilizând cheia de sesiune obținută anterior, clientul generează un \textit{Autentificator} pentru a dovedi că este posesorul legitim al TGT-ului.
+
+\begin{figure}[H]
+    \centering
+    % Resizebox asigură că diagrama încape perfect în coloană
+    \resizebox{\linewidth}{!}{
+        \input{chapters/figures/tgs_exchange.tex}
+    }
+    \caption{Diagrama de secvență pentru TGS Exchange}
+    \label{fig:tgs_exchange}
+\end{figure}
+
+TGS-ul verifică timestamp-ul din autentificator pentru a preveni atacurile de tip \textit{replay}. Dacă totul este valid, clientul primește noul tichet ($T_{Serv}$) și noua cheie de sesiune ($K_{C,S}$).
+
+\subsubsection{Faza 3: Accesarea Serviciului (Client-Server Exchange)}
+\textbf{Scop:} Clientul prezintă tichetul final serverului.
+
+\begin{figure}[H]
+    \centering
+    % \resizebox asigură scalarea automată la lățimea coloanei
+    \resizebox{\linewidth}{!}{
+        \input{chapters/figures/cs_exchange.tex}
+    }
+    \caption{Diagrama Client-Server Exchange}
+    \label{fig:cs_exchange}
+\end{figure}
+
+\subsection{De ce este acest sistem sigur?}
+\begin{enumerate}
+    \item \textbf{Parola nu circulă niciodată:} Ea este folosită doar local pe stația clientului pentru a decripta primul mesaj de la AS.
+    \item \textbf{Protecție la Replay:} Datorită Autentificatorului care conține \textit{Timestamp}, un atacator care interceptează pachetele nu le poate refolosi mai târziu, deoarece serverul va respinge cererile cu ora veche.
+    \item \textbf{Minimizarea riscului:} Serverul de aplicație nu trebuie să știe parola utilizatorului, ci doar să poată decripta tichetul emis de KDC.
+\end{enumerate}
+
+\subsection{Replicarea și Administrarea Datelor}
+Pentru a asigura disponibilitatea și toleranța la defecte (fault tolerance), Kerberos nu rulează pe un singur nod, ci folosește o arhitectură distribuită de tip \textbf{Master-Slave} pentru baza de date de credențiale.
+
+\subsubsection{Arhitectura de Replicare (Master-Slave)}
+Baza de date Kerberos este centralizată logic, dar replicată fizic pentru disponibilitate. Arhitectura implică:
+\begin{itemize}
+    \item \textbf{Master KDC:} Deține copia autoritativă (RW). Orice modificare (schimbare parolă, adăugare utilizator) se face aici.
+    \item \textbf{Slave KDCs:} Dețin copii \textit{Read-Only}. Acestea servesc cererile de autentificare (AS/TGS) pentru a reduce încărcarea pe Master.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    % Resizebox pentru a încadra figura compact în coloană
+    \resizebox{0.9\linewidth}{!}{
+        \input{chapters/figures/master_slave.tex}
+    }
+    \caption{Arhitectura de Replicare Master-Slave}
+    \label{fig:master_slave}
+\end{figure}
+
+\textbf{Mecanismul de Propagare:}
+Conform specificației originale \cite{steiner1988kerberos}, consistența datelor este menținută prin propagare periodică (uzual la fiecare oră). Procesul de pe Master (\texttt{kprop}) trimite baza de date completă către procesele pereche (\texttt{kpropd}) de pe sclave.
+Pentru integritate, transferul este precedat de un \textbf{checksum criptat} cu cheia mașinii Master. Sclavul acceptă actualizarea doar dacă checksum-ul calculat local corespunde cu cel decriptat.
+
+\subsubsection{Protocolul de Administrare (KDBM)}
+Administrarea se face printr-un serviciu dedicat, \textbf{KDBM} (Kerberos Database Management), accesat prin utilitarele \texttt{kadmin} (pentru administratori) și \texttt{kpasswd} (pentru utilizatori simpli).
+
+Acest serviciu are o particularitate de securitate critică:
+\begin{quote}
+    \textit{"KDBM nu acceptă tichete emise prin TGS, ci impune ca utilizatorul să se autentifice direct prin serviciul AS."}
+\end{quote}
+
+\textbf{Justificare de Securitate:}
+Această constrângere impune utilizatorului să introducă parola \textbf{chiar acum}, demonstrând prezența fizică.
+\begin{itemize}
+    \item Dacă s-ar permite folosirea unui TGT (care este stocat în memorie/cache), un atacator ar putea schimba parola unui utilizator care și-a lăsat stația de lucru nesupravegheată ("Passerby Attack").
+    \item Forțând re-introducerea parolei pentru operațiuni sensibile, Kerberos mitigează riscul furtului de sesiune pentru acțiuni administrative.
+\end{itemize}

@@ -1,10 +1,47 @@
 \section{Algoritmul Serial}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce vitae eros sit amet sem ornare
-varius. Duis eget felis eget risus posuere luctus. Integer odio metus, eleifend at nunc
-vitae, rutrum fermentum leo. Quisque rutrum vitae risus nec porta. Nunc eu orci euismod,
-ornare risus at, accumsan augue. Ut tincidunt pharetra convallis. Maecenas ut pretium ex.
-Morbi tellus dui, viverra quis augue at, tincidunt hendrerit orci. Lorem ipsum dolor sit amet,
-consectetur adipiscing elit. Aliquam quis sollicitudin nunc. Sed sollicitudin purus
-dapibus mi fringilla, nec tincidunt nunc eleifend. Nam ut molestie erat. Integer eros dolor,
-viverra quis massa at, auctor.
+În contextul autentificării, varianta serială a problemei presupune existența unui sistem monolitic în care utilizatorul și resursa accesată se află pe aceeași mașină fizică, sub controlul aceluiași nucleu (kernel). În acest scenariu, nu există o rețea de comunicații interpusă, iar mediul este considerat de încredere (Trusted Computing Base).
+
+\subsection{Descrierea Problemei}
+Problema fundamentală este verificarea identității unui \textit{principal} (utilizator sau serviciu) înainte de a-i acorda acces la resursele sistemului. Autentificarea se bazează pe ceva ce utilizatorul \textit{știe} (o parolă), care este comparată cu o valoare de referință stocată într-o bază de date securizată a sistemului.
+
+\subsection{Descrierea Algoritmului}
+Algoritmul serial de autentificare urmează un flux liniar de verificare a hash-urilor. Deoarece magistrala de date este internă și sigură, parola poate fi procesată direct, fără necesitatea unor tichete sau mecanisme de prevenire a atacurilor de tip \textit{replay}, esențiale în varianta distribuită.
+
+Pașii algoritmului sunt:
+\begin{enumerate}
+    \item Utilizatorul furnizează identificatorul unic (\textit{UserID}) și parola (\textit{Password}).
+    \item Sistemul caută în tabela de \textit{principals} (echivalentul \texttt{/etc/shadow} în UNIX) intrarea corespunzătoare identificatorului.
+    \item Dacă identificatorul nu există, accesul este refuzat imediat pentru a preveni scurgerea de informații despre existența conturilor.
+    \item Dacă utilizatorul există, se extrage cheia (sau hash-ul) stocată în baza de date (\texttt{key\_bytes}).
+    \item Sistemul aplică funcția de derivare a cheii (KDF) asupra parolei introduse.
+    \item Se compară bit cu bit rezultatul obținut cu valoarea stocată.
+    \item Dacă valorile coincid, se inițializează o sesiune locală; altfel, se returnează o eroare de autentificare.
+\end{enumerate}
+
+\subsection{Pseudocod}
+Algoritmul poate fi formalizat după cum urmează:
+
+
+\end{multicols}
+\begin{algorithm}[H] % Folosește algorithm* cu [t] (top)
+    \caption{Autentificare Serială (Locală)}
+    \begin{algorithmic}[1]
+        \Procedure{SerialAuth}{UserID, InputPassword}
+        \State $record \gets \text{DB.lookup}(\text{primary\_name} = UserID)$
+        \If{$record = \text{NULL}$}
+        \Return \textbf{false} \Comment{Utilizator inexistent}
+        \EndIf
+        \State $DerivedKey \gets \text{KDF}(InputPassword)$
+        \If{$DerivedKey = record.\text{key\_bytes}$}
+        \State \text{CreateLocalSession}(UserID)
+        \Return \textbf{true}
+        \Else
+        \Return \textbf{false} \Comment{Parolă incorectă}
+        \EndIf
+        \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+\begin{multicols}{2}
+
+\newpage

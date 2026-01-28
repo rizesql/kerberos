@@ -1,0 +1,480 @@
+\documentclass{beamer}
+
+% --- TEMA ȘI CULORI ---
+\usetheme{Madrid} % Sau 'Berlin', 'Frankfurt', 'Metropolis'
+\usecolortheme{beaver} % Schemă de culori (Roșu/Gri)
+
+% --- PACHETE NECESARE ---
+\usepackage[utf8]{inputenc}
+\usepackage[romanian]{babel}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{shadows, positioning, arrows.meta, calc, shapes, fit, backgrounds}
+
+% --- INFORMAȚII TITLU ---
+\title[Kerberos]{Kerberos: Un serviciu de autentificare pentru sisteme Open Network}
+\subtitle{Proiect Final - Sisteme Distribuite}
+\author[Echipa Kerberos]{Prioteasa Liviu Florentin \and Rizescu Iulian Ştefan \and Ţacu Ştefan Darius}
+\institute[FMI]{Facultatea de Matematică și Informatică, Universitatea din București}
+\date{Ianuarie 2026}
+
+\begin{document}
+
+% Slide 1: Titlu și Echipă
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Context și Problemă}
+  % Partea de Context
+  \begin{itemize}
+    \item \textbf{Context:} Tranziția de la sisteme monolitice (acces \textit{Serial/Local}) la sisteme distribuite (acces prin \textit{Rețea}).
+  \end{itemize}
+
+  \vspace{0.5cm}
+
+  % Partea de Problemă (Listă încapsulată)
+  \begin{block}{Problema: Mediul "Open Network" este nesigur}
+    \begin{itemize}
+      \item \textbf{Sniffing:} Atacatorii pot intercepta pachetele de date care circulă pe cablu/Wi-Fi.
+      \item \textbf{Spoofing:} Adresele IP nu sunt o dovadă suficientă a identității (pot fi falsificate).
+    \end{itemize}
+  \end{block}
+
+  \vspace{0.5cm}
+
+  % Întrebarea Cheie (Evidențiată distinct)
+  \begin{alertblock}{Întrebare Cheie}
+    Cum demonstrăm identitatea unui utilizator fără a trimite parola în clar prin rețea?
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Soluția - Trusted Third Party (TTP)}
+
+  % Conceptul de bază
+  \begin{block}{Concept}
+    Introducerea unei autorități centrale de încredere, denumită \textbf{KDC (Key Distribution Center)}.
+  \end{block}
+
+  \vspace{0.5cm}
+
+  % Rolurile sistemului
+  \textbf{Roluri și Arhitectură:}
+  \begin{itemize}
+    \item \textbf{Elimină redundanța riscantă:} Nu mai este necesar ca fiecare server din rețea să stocheze parolele utilizatorilor.
+    \item \textbf{Fortificare:} Centralizează administrarea securității într-un singur punct critic, care poate fi protejat intens.
+  \end{itemize}
+
+  \vspace{0.5cm}
+
+  % Elementul Cheie (SSO) - Evidențiat
+  \begin{alertblock}{Element Cheie}
+    Utilizatorul se autentifică o singură dată (\textbf{Single Sign-On}) și primește "bilete" (\textit{Tichete}) pe care le folosește ulterior, fără a mai introduce parola.
+  \end{alertblock}
+
+\end{frame}
+
+\begin{frame}{Algoritmul Serial}
+  \begin{algorithm}[H]
+    \caption{Autentificare Serială (Locală)}
+    \begin{algorithmic}[1]
+      \Procedure{SerialAuth}{UserID, InputPassword}
+      \State $record \gets \text{DB.lookup}(\text{primary\_name} = UserID)$
+      \If{$record = \text{NULL}$}
+      \Return \textbf{false} \Comment{Utilizator inexistent}
+      \EndIf
+      \State $DerivedKey \gets \text{KDF}(InputPassword)$
+      \If{$DerivedKey = record.\text{key\_bytes}$}
+      \State \text{CreateLocalSession}(UserID)
+      \Return \textbf{true}
+      \Else
+      \Return \textbf{false} \Comment{Parolă incorectă}
+      \EndIf
+      \EndProcedure
+    \end{algorithmic}
+  \end{algorithm}
+\end{frame}
+
+\begin{frame}{Algoritmul Distribuit (SPMD)}
+  \begin{block}{Tranziția la Sistem Distribuit}
+    Spre deosebire de algoritmul serial, varianta \textbf{SPMD} (Single Program, Multiple Data) presupune noduri care rulează aceeași logică de protocol, dar operează pe date diferite.
+  \end{block}
+
+  \vspace{0.3cm}
+
+  \textbf{Fluxul celor 3 faze (Mesaje în Rețea):}
+  \begin{enumerate}
+    \item \textbf{AS Exchange:} Obținere TGT.
+    \item \textbf{TGS Exchange:} Obținere Tichet de Serviciu.
+    \item \textbf{AP Exchange:} Accesare Resursă.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Faza 1 (SPMD): Autentificarea Inițială (AS Exchange)}
+
+  \begin{columns}[c] % Aliniere verticală pe centru
+
+    % --- COLOANA STÂNGA (Text) ---
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+        \item \textbf{Scop:} Obținerea "Permisului Universal" (\textbf{TGT} - Ticket Granting Ticket).
+        \item \textbf{Mecanism:}
+              \begin{itemize}
+                \item Utilizator $\rightarrow$ AS: Trimite cererea (ID).
+                \item AS $\rightarrow$ Utilizator: Răspunde cu TGT-ul criptat (folosind cheia TGS).
+              \end{itemize}
+      \end{itemize}
+
+      \vspace{0.3cm}
+
+      % Evidențiem securitatea ca la slide-ul 5
+      \begin{alertblock}{Detaliu de Securitate}
+        Parola utilizatorului este folosită \textbf{doar local} pentru a decripta răspunsul. Ea nu este trimisă niciodată prin rețea.
+      \end{alertblock}
+    \end{column}
+
+    % --- COLOANA DREAPTA (Diagrama) ---
+    \begin{column}{0.5\textwidth}
+      \begin{figure}
+        \centering
+        % Scalăm diagrama la lățimea coloanei curente
+        \resizebox{\linewidth}{!}{%
+          \input{chapters/figures/as_exchange.tex}
+        }
+        \caption{Fluxul AS Exchange}
+      \end{figure}
+    \end{column}
+
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}{Faza 2 (SPMD): Obținerea Accesului (TGS Exchange)}
+
+
+
+  % --- ÎNCEPUT STRUCTURĂ PE COLOANE ---
+  \begin{columns}[c] % [c] = aliniere verticală pe centru
+
+    % --- COLOANA STÂNGA (Text / AlertBlock) ---
+    \begin{column}{0.4\textwidth}
+
+      \begin{itemize}
+        \item \textbf{Scop:} Obținerea tichetului pentru un serviciu specific.
+        \item \textbf{Mecanism:} Clientul prezintă TGT-ul + un Authenticator.
+      \end{itemize}
+
+      \begin{alertblock}{Securitate: Replay}
+        Serverul TGS verifică dacă timestamp-ul este recent ($< 5$ min).
+
+        Pachetele vechi sunt respinse imediat.
+      \end{alertblock}
+    \end{column}
+
+    % --- COLOANA DREAPTA (Diagrama) ---
+    \begin{column}{0.6\textwidth}
+      \begin{figure}
+        \centering
+        % Important: Folosim \linewidth pentru a se încadra în coloană
+        \resizebox{\linewidth}{!}{%
+          \input{chapters/figures/tgs_exchange.tex}
+        }
+        \caption{Fluxul TGS Exchange}
+      \end{figure}
+    \end{column}
+
+  \end{columns}
+  % --- SFÂRȘIT COLOANE ---
+
+\end{frame}
+
+\begin{frame}{Faza 3 (SPMD): Accesarea Serviciului (Client-Server)}
+
+  \begin{columns}[c] % Aliniere verticală pe centru
+
+    % --- COLOANA STÂNGA (Text) ---
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+        \item \textbf{Scop:} Accesul efectiv la resursa dorită.
+        \item \textbf{Mecanism:} Clientul prezintă serverului:
+              \begin{itemize}
+                \item \textbf{Tichetul de Serviciu} ($T_{Serv}$).
+                \item Un nou Authenticator pentru a dovedi identitatea.
+              \end{itemize}
+      \end{itemize}
+
+      \vspace{0.3cm}
+
+      % Blocul Stateless - Punct cheie
+      \begin{block}{Rezultat: Sistem Stateless}
+        Serverul acceptă cererea și validează tichetul local, \textbf{fără a comunica cu KDC-ul}.
+
+        KDC-ul nu este interogat la fiecare accesare, asigurând scalabilitatea.
+      \end{block}
+    \end{column}
+
+    % --- COLOANA DREAPTA (Diagrama) ---
+    \begin{column}{0.5\textwidth}
+      \begin{figure}
+        \centering
+        % Scalăm diagrama la lățimea coloanei
+        \resizebox{\linewidth}{!}{%
+          \input{chapters/figures/cs_exchange.tex}
+        }
+        \caption{Fluxul Client-Server}
+      \end{figure}
+    \end{column}
+
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}{Replicare și Disponibilitate}
+
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+        \item \textbf{Arhitectura:} Tip \textbf{Master-Slave}.
+        \item \textbf{Master KDC:}
+              \begin{itemize}
+                \item Deține copia autoritativă (Read-Write).
+                \item Singurul care acceptă scrieri (ex: schimbarea parolei).
+              \end{itemize}
+        \item \textbf{Slave KDCs:}
+              \begin{itemize}
+                \item Dețin copii Read-Only actualizate periodic.
+                \item Asigură \textbf{disponibilitatea} în rețea.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+      \begin{figure}
+        \centering
+        \resizebox{\linewidth}{!}{%
+          \input{chapters/figures/master_slave.tex}
+        }
+        \caption{Arhitectura de Replicare}
+      \end{figure}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}{Analiză Teoretică: Corectitudine și Complexitate}
+  \small % Micșorăm puțin fontul pentru a încăpea tot textul
+
+  % Blocul 1: Analiza Corectitudinii
+  \begin{block}{Corectitudine și Dependențe}
+    \begin{itemize}
+      \item \textbf{Sincronizarea Ceasurilor (Time Skew):}
+            Deoarece protocolul se bazează pe \textit{Timestamp-uri} pentru a preveni atacurile, este critică sincronizarea prin NTP. O deviație $>5$ minute duce la respingerea tichetelor.
+      \item \textbf{Integritatea KDC (TTP):}
+            Securitatea este centralizată. Compromiterea cheii Master a KDC-ului permite crearea de \textit{"Golden Tickets"} (impersonare totală).
+    \end{itemize}
+  \end{block}
+
+  \vspace{0.2cm} % Spațiu redus (era 0.5cm)
+
+  % Blocul 2: Analiza Performanței
+  \begin{block}{Performanță și Eficiență}
+    \begin{itemize}
+      \item \textbf{Complexitate de Rețea:} $\mathcal{O}(1)$.
+            Protocolul necesită un număr constant de mesaje (\textbf{6 pachete}), indiferent de numărul de utilizatori.
+      \item \textbf{Eficiență Computațională:}
+            Utilizează exclusiv \textbf{criptare simetrică} (AES/DES), care este mult mai rapidă decât cea asimetrică (RSA), reducând încărcarea pe CPU.
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}{Topologii Avansate (1/2): Cross-Realm Authentication}
+  \small % Revenim la \small, acum avem loc
+
+  % 1. Blocul Problemă pe toată lățimea (sus)
+  \begin{block}{Problemă: Limitarea KDC-ului Unic}
+    Într-o companie globală, gestionarea tuturor utilizatorilor într-o singură bază de date este imposibilă (latenta rețelei, gât de sticlă).
+  \end{block}
+
+  \vspace{0.3cm}
+
+  % 2. Coloane Inegale (Jos)
+  \begin{columns}[c] % Aliniere verticală pe centru
+
+    % --- COLOANA STÂNGA (40%) - Soluția și Pașii ---
+    \begin{column}{0.4\textwidth}
+      \textbf{Soluție:} Cross-Realm Authentication.
+
+      \vspace{0.2cm}
+      \textbf{Fluxul de operare:}
+      \begin{enumerate}
+        \item Client (Realm A) cere acces în Realm B.
+        \item KDC A emite un \textbf{"Remote TGT"}.
+        \item KDC B validează TGT-ul și emite tichetul.
+      \end{enumerate}
+    \end{column}
+
+    % --- COLOANA DREAPTA (60%) - Diagrama ---
+    \begin{column}{0.6\textwidth}
+      \begin{figure}
+        \centering
+        % Diagrama se va scala la lățimea coloanei (60% din slide)
+        % sau maxim 60% din înălțime, ca să nu iasă din pagină
+        \resizebox{\linewidth}{!}{%
+          \input{chapters/figures/cross_realm.tex}
+        }
+        \caption{Flux Cross-Realm}
+      \end{figure}
+    \end{column}
+
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}{Topologii Avansate (2/2): Delegare (Proxy)}
+  \small
+
+  % Blocul Problemă (Sus, toată lățimea)
+  \begin{block}{Problemă: Accesul Indirect}
+    Un serviciu intermediar (ex: \textit{Print Server}) trebuie să acceseze o resursă protejată \textbf{în numele utilizatorului}, dar nu deține parola acestuia.
+  \end{block}
+
+  \vspace{0.2cm}
+
+  \begin{columns}[c]
+
+    % --- COLOANA STÂNGA (Mai lată pentru text - 65%) ---
+    \begin{column}{0.65\textwidth}
+      \textbf{Soluție:} Proxy Tickets.
+
+      \vspace{0.2cm}
+      \textbf{Mecanism:}
+      \begin{itemize}
+        \item Utilizatorul emite un tichet special care \textbf{deleagă} drepturile sale către Print Server.
+        \item Tichetul conține restricții (adresă IP, timp de viață scurt).
+        \item Serviciul intermediar îl prezintă mai departe ca dovadă.
+      \end{itemize}
+    \end{column}
+
+    % --- COLOANA DREAPTA (Mai îngustă pentru diagrama înaltă - 35%) ---
+    \begin{column}{0.35\textwidth}
+      \begin{figure}
+        \centering
+        % CHEIA SUCCESULUI: Scalăm după ÎNĂLȚIME, nu lățime!
+        % ! la lățime înseamnă "păstrează proporția".
+        % 0.6\textheight înseamnă "maxim 60% din înălțimea slide-ului"
+        \resizebox{!}{0.40\textheight}{%
+          \input{chapters/figures/proxy_topology.tex}
+        }
+        \caption{Topologie Proxy}
+      \end{figure}
+    \end{column}
+
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}{Analiza Scalabilității (Variația Nodurilor)}
+  \small
+
+  \begin{columns}[t] % Aliniere la partea de sus
+
+    % --- COLOANA STÂNGA (Avantaje - Citire) ---
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Scalabilitate la Citire (Autentificare)}
+        \begin{itemize}
+          \item \textbf{Creștere Liniară:} Adăugarea de noduri \textit{Slave} multiplică direct capacitatea de procesare a cererilor de logare.
+          \item \textbf{Performanță:} Sistemul poate susține mii de cereri simultane prin balansarea încărcării între Slave-uri.
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    % --- COLOANA DREAPTA (Limitări - Scriere) ---
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Limitare la Scriere (Modificări)}
+        \begin{itemize}
+          \item \textbf{Master Exclusiv:} Doar KDC-ul Master are drept de scriere în baza de date.
+          \item \textbf{SPOF:} Master-ul rămâne un \textit{Single Point of Failure} pentru operațiuni administrative (ex: schimbarea parolei).
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+
+  \end{columns}
+
+
+  % --- BLOC FINAL (Propagation Lag) ---
+  \begin{exampleblock}{Fenomen: Propagation Lag}
+    Există o întârziere inerentă între momentul scrierii pe Master și actualizarea tuturor Slave-urilor.
+
+    \textit{Consecință:} Un utilizator ar putea folosi vechea parolă pe un Slave neactualizat timp de câteva secunde/minute.
+  \end{exampleblock}
+
+\end{frame}
+
+\begin{frame}{Demo Live și Concluzii}
+  \small
+
+  % 1. Setup-ul Demo-ului (Arhitectura)
+  \begin{block}{Arhitectura Implementării (Sistem Distribuit SPMD)}
+    Sistem format din noduri care respectă protocolul, comunicând prin HTTP:
+    \begin{columns}[t]
+      \begin{column}{0.33\textwidth}
+        \centering
+        \textbf{1. KDC Server}\\
+        \texttt{:8080}\\
+        \textit{(SQLite DB)}
+      \end{column}
+      \begin{column}{0.33\textwidth}
+        \centering
+        \textbf{2. Client App}\\
+        \texttt{:3000}\\
+        \textit{(Web Frontend)}
+      \end{column}
+      \begin{column}{0.33\textwidth}
+        \centering
+        \textbf{3. API Server}\\
+        \texttt{:9090}\\
+        \textit{(Resursă Protejată)}
+      \end{column}
+    \end{columns}
+  \end{block}
+
+  \vspace{0.3cm}
+
+  % 2. Scenariul de Test (Fluxul din UI)
+  \begin{columns}[c]
+    \begin{column}{0.55\textwidth}
+      \textbf{Fluxul de Demonstrație (Step-by-Step):}
+      \begin{enumerate}
+        \item \textbf{Login (AS Exchange):}
+              UI $\rightarrow$ KDC. Obținere TGT (parola rămâne locală).
+        \item \textbf{Get Service Ticket (TGS Exchange):}
+              Folosire TGT $\rightarrow$ Obținere tichet pentru \texttt{:9090}.
+        \item \textbf{Access Resource (AP Exchange):}
+              Apel către API Server cu tichetul valid.
+      \end{enumerate}
+    \end{column}
+
+    \begin{column}{0.45\textwidth}
+      \begin{alertblock}{Insight Cheie}
+        \textbf{API Server NU contactează KDC!}
+
+        Verificarea tichetului se face \textbf{offline} (folosind cheia secretă partajată) și Replay Cache.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.3cm}
+
+  % 3. Final
+  \centering
+  \textbf{Concluzie:} Kerberos permite autentificare sigură pe rețele nesigure, fără a expune secretele.
+
+
+\end{frame}
+
+
+\end{document}
