@@ -71,9 +71,9 @@ This file serves as the primary context provider for the Gemini agent, summarizi
 | AP Middleware                     | `internal/ap/middleware.go` | ✅ Done |
 | Replay Cache                      | `internal/replay/cache.go`  | ✅ Done |
 | **Missing Components (TODO)**     |                             |         |
-| **API Server**                    | `cmd/api/`                  | ⏳ **Pending** |
-| **Client App (Web UI)**           | `cmd/client/`               | ⏳ **Pending** |
-| **KAdmin Tool**                   | `cmd/kadmin/`               | ⏳ **Pending** |
+| **API Server**                    | `cmd/api/`                  | ✅ Done |
+| **Client App (Web UI)**           | `cmd/client/`               | ✅ Done |
+| **KAdmin Tool**                   | `cmd/kadmin/`               | ✅ Done |
 
 ## 4. Next Steps (Action Plan)
 

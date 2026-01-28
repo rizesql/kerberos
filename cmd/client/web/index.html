@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Kerberos Demo Client</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 700px;
+        width: 100%;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 14px;
+      }
+
+      .content {
+        padding: 30px;
+      }
+
+      .step {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: #f9f9f9;
+      }
+
+      .step h3 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+      }
+
+      .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-right: 12px;
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+
+      input[type="text"],
+      input[type="password"] {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.2s;
+      }
+
+      input[type="text"]:focus,
+      input[type="password"]:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+      }
+
+      button {
+        padding: 10px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .result {
+        margin-top: 15px;
+        padding: 12px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        min-height: 30px;
+      }
+
+      .result pre {
+        margin: 0;
+        font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+        font-size: 12px;
+        color: #333;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+      }
+
+      .status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .status.loading {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+
+      .footer {
+        padding: 20px 30px;
+        background: #f5f5f5;
+        border-top: 1px solid #e0e0e0;
+        border-radius: 0 0 12px 12px;
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+      }
+
+      .divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+        margin: 30px 0;
+      }
+
+      @media (max-width: 600px) {
+        .header h1 {
+          font-size: 22px;
+        }
+
+        .content {
+          padding: 20px;
+        }
+
+        .input-group {
+          flex-direction: column;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔐 Kerberos Authentication Demo</h1>
+        <p>Three-step distributed authentication flow</p>
+      </div>
+
+      <div class="content">
+        <!-- Step 1: Login -->
+        <div class="step">
+          <h3><span class="step-number">1</span>Login (AS Exchange)</h3>
+          <p style="color: #666; margin-bottom: 15px; font-size: 13px;">
+            Authenticate with username and password. The password is never sent to the API server.
+          </p>
+          <div class="input-group">
+            <input id="username" type="text" placeholder="Username" value="alice" />
+            <input id="password" type="password" placeholder="Password" value="secret123" />
+            <button onclick="login()">Login</button>
+          </div>
+          <div id="login-result" class="result"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Step 2: Get Ticket -->
+        <div class="step">
+          <h3><span class="step-number">2</span>Get Service Ticket (TGS Exchange)</h3>
+          <p style="color: #666; margin-bottom: 15px; font-size: 13px;">
+            Request a service ticket for the API server using your TGT.
+          </p>
+          <div class="input-group">
+            <input id="service" type="text" placeholder="Service" value="http/api-server" />
+            <button onclick="getTicket()">Get Ticket</button>
+          </div>
+          <div id="ticket-result" class="result"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Step 3: Call Service -->
+        <div class="step">
+          <h3><span class="step-number">3</span>Access Protected Resource (AP Exchange)</h3>
+          <p style="color: #666; margin-bottom: 15px; font-size: 13px;">
+            Call a protected API endpoint using your service ticket.
+          </p>
+          <div class="input-group">
+            <input
+              id="url"
+              type="text"
+              placeholder="URL"
+              value="http://localhost:9090/api/whoami"
+            />
+            <button onclick="callService()">Call</button>
+          </div>
+          <div id="call-result" class="result"></div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <strong>Tips:</strong> Try clicking "Call" twice to see replay attack prevention in action.
+      </div>
+    </div>
+
+    <script>
+      function setResult(elementId, content, isError = false) {
+        const el = document.getElementById(elementId);
+        if (typeof content === 'string') {
+          el.innerHTML = `<pre>${escapeHtml(content)}</pre>`;
+        } else {
+          el.innerHTML = `<pre>${escapeHtml(JSON.stringify(content, null, 2))}</pre>`;
+        }
+        if (isError) {
+          el.className = 'result';
+          el.style.borderColor = '#f5c6cb';
+          el.style.backgroundColor = '#f8d7da';
+        }
+      }
+
+      function escapeHtml(text) {
+        const map = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+      }
+
+      async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+          setResult('login-result', 'Please enter username and password', true);
+          return;
+        }
+
+        try {
+          setResult('login-result', 'Logging in...');
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            setResult('login-result', `Error: ${data.error || 'Login failed'}`, true);
+          } else {
+            setResult('login-result', data);
+          }
+        } catch (err) {
+          setResult('login-result', `Error: ${err.message}`, true);
+        }
+      }
+
+      async function getTicket() {
+        const service = document.getElementById('service').value;
+
+        if (!service) {
+          setResult('ticket-result', 'Please enter service name', true);
+          return;
+        }
+
+        try {
+          setResult('ticket-result', 'Requesting ticket...');
+          const res = await fetch('/api/ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ service })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            setResult('ticket-result', `Error: ${data.error || 'Failed to get ticket'}`, true);
+          } else {
+            setResult('ticket-result', data);
+          }
+        } catch (err) {
+          setResult('ticket-result', `Error: ${err.message}`, true);
+        }
+      }
+
+      async function callService() {
+        const url = document.getElementById('url').value;
+
+        if (!url) {
+          setResult('call-result', 'Please enter service URL', true);
+          return;
+        }
+
+        try {
+          setResult('call-result', 'Calling service...');
+          const res = await fetch('/api/call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+          });
+
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = text;
+          }
+
+          if (!res.ok) {
+            setResult('call-result', `Error (${res.status}): ${typeof data === 'string' ? data : data.error || 'Call failed'}`, true);
+          } else {
+            setResult('call-result', data);
+          }
+        } catch (err) {
+          setResult('call-result', `Error: ${err.message}`, true);
+        }
+      }
+
+      // Log page load
+      console.log('Kerberos Demo Client loaded');
+    </script>
+  </body>
+</html>
