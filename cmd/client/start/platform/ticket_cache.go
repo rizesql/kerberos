@@ -1,4 +1,4 @@
-package start
+package platform
 
 import (
 	"sync"

@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	"github.com/rizesql/kerberos/cmd/client/start/platform"
+	"github.com/rizesql/kerberos/cmd/client/start/routes"
 	"github.com/rizesql/kerberos/internal/o11y/logging"
+	"github.com/rizesql/kerberos/internal/sdk"
 	"github.com/rizesql/kerberos/internal/server"
 	"github.com/rizesql/kerberos/internal/shutdown"
 )
@@ -26,7 +29,12 @@ func Run(ctx context.Context, cfg Config) error {
 	}()
 
 	// Create ticket cache (stores TGT and service tickets in memory)
-	ticketCache := NewTicketCache()
+	ticketCache := platform.NewTicketCache()
+
+	// Initialize SDK
+	sdk := sdk.New(sdk.WithServerUrl(cfg.KDCAddr))
+
+	plt := platform.NewPlatform(sdk, ticketCache)
 
 	// Create server
 	srv := server.New(logger)
@@ -34,11 +42,7 @@ func Run(ctx context.Context, cfg Config) error {
 
 	// Serve static frontend files
 	srv.Mux().Handle("/", http.FileServer(http.Dir(cfg.WebDir)))
-
-	// Register API routes for auth flow
-	srv.Register(&LoginRoute{kdcAddr: cfg.KDCAddr, cache: ticketCache})
-	srv.Register(&GetTicketRoute{kdcAddr: cfg.KDCAddr, cache: ticketCache})
-	srv.Register(&CallServiceRoute{cache: ticketCache})
+	routes.Register(srv, plt)
 
 	// Start listening
 	ln, err := net.Listen("tcp", cfg.Port)

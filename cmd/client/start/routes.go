@@ -1,386 +1,337 @@
 package start
 
-import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net"
-	"net/http"
-	"time"
-
-	"github.com/rizesql/kerberos/internal/crypto"
-	"github.com/rizesql/kerberos/internal/protocol"
-	"github.com/rizesql/kerberos/internal/server"
-)
-
 // LoginRoute - POST /api/login
 // Calls KDC AS Exchange, stores TGT
-type LoginRoute struct {
-	kdcAddr string
-	cache   *TicketCache
-}
+// type LoginRoute struct {
+// 	sdk   *sdk.Sdk
+// 	cache *platform.TicketCache
+// }
 
-func (r *LoginRoute) Method() string { return http.MethodPost }
-func (r *LoginRoute) Path() string   { return "/api/login" }
-func (r *LoginRoute) Handle() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			server.EncodeError(w, http.StatusBadRequest, err)
-			return
-		}
+// func (r *LoginRoute) Method() string { return http.MethodPost }
+// func (r *LoginRoute) Path() string   { return "/api/login" }
 
-		// 1. Build AS-REQ
-		client, err := protocol.NewPrincipal(protocol.Primary(body.Username), "", "ATHENA.MIT.EDU")
-		if err != nil {
-			server.EncodeError(w, http.StatusBadRequest, fmt.Errorf("invalid username: %w", err))
-			return
-		}
+// type loginRequest struct {
+// 	Username string `json:"username"`
+// 	Password string `json:"password"`
+// }
 
-		tgsPrincipal, err := protocol.NewKrbtgt("ATHENA.MIT.EDU")
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("invalid krbtgt: %w", err))
-			return
-		}
+// func (r *LoginRoute) Handle() http.HandlerFunc {
+// 	return func(w http.ResponseWriter, req *http.Request) {
+// 		body, err := server.Decode[loginRequest](req)
+// 		if err != nil {
+// 			server.EncodeError(w, http.StatusBadRequest, err)
+// 			return
+// 		}
 
-		nonce, err := protocol.NewNonce(int32(time.Now().UnixNano()%100000 + 1))
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 		res, err := r.login(req.Context(), body)
+// 		if err != nil {
+// 			// In a real app, we'd map domain errors to specific HTTP codes here
+// 			server.EncodeError(w, http.StatusInternalServerError, err)
+// 			return
+// 		}
 
-		addr, err := protocol.NewAddress(net.IPv4(127, 0, 0, 1))
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 		if err := server.Encode(w, http.StatusOK, res); err != nil {
+// 			server.EncodeError(w, http.StatusInternalServerError, err)
+// 			return
+// 		}
+// 	}
+// }
 
-		asReq, err := protocol.NewASReq(client, tgsPrincipal, addr, nonce)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// func (r *LoginRoute) login(ctx context.Context, body loginRequest) (map[string]any, error) {
+// 	// 1. Build AS-REQ
+// 	client, err := protocol.NewPrincipal(protocol.Primary(body.Username), "", "ATHENA.MIT.EDU")
+// 	if err != nil {
+// 		return nil, fmt.Errorf("invalid username: %w", err)
+// 	}
 
-		// 2. POST to KDC AS Exchange
-		reqBody, err := json.Marshal(asReq)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	tgsPrincipal, err := protocol.NewKrbtgt("ATHENA.MIT.EDU")
+// 	if err != nil {
+// 		return nil, fmt.Errorf("invalid krbtgt: %w", err)
+// 	}
 
-		resp, err := http.Post(r.kdcAddr+"/as", "application/json", bytes.NewReader(reqBody))
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("kdc unreachable: %w", err))
-			return
-		}
-		defer resp.Body.Close()
+// 	nonce, err := protocol.NewNonce(int32(time.Now().UnixNano()%100000 + 1))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		if resp.StatusCode != http.StatusOK {
-			bodyBytes, _ := io.ReadAll(resp.Body)
-			server.EncodeError(w, resp.StatusCode, fmt.Errorf("kdc error: %s", string(bodyBytes)))
-			return
-		}
+// 	addr, err := protocol.NewAddress(net.IPv4(127, 0, 0, 1))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		var asRep protocol.ASRep
-		if err := json.NewDecoder(resp.Body).Decode(&asRep); err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("invalid kdc response: %w", err))
-			return
-		}
+// 	asReq, err := protocol.NewASReq(client, tgsPrincipal, addr, nonce)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		// 3. Derive key from password using correct salt (realm + primary + instance)
-		salt := "ATHENA.MIT.EDU" + body.Username // realm + primary + instance (empty for alice)
-		clientKey, err := crypto.DeriveKey(body.Password, salt)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("key derivation failed: %w", err))
-			return
-		}
+// 	asRep, err := r.sdk.Kdc.PostAS(ctx, asReq)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("invalid kdc response: %w", err)
+// 	}
 
-		// 4. Decrypt SecretPart to get session key
-		secretPartBytes, err := crypto.Decrypt(clientKey, asRep.SecretPart().Ciphertext())
-		if err != nil {
-			server.EncodeError(w, http.StatusUnauthorized, fmt.Errorf("failed to decrypt session key (wrong password?): %w", err))
-			return
-		}
+// 	// 2. Derive key from password using correct salt (realm + primary + instance)
+// 	salt := "ATHENA.MIT.EDU" + body.Username // realm + primary + instance (empty for alice)
+// 	clientKey, err := crypto.DeriveKey(body.Password, salt)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("key derivation failed: %w", err)
+// 	}
 
-		var encRepPart protocol.EncKDCRepPart
-		if err := json.Unmarshal(secretPartBytes, &encRepPart); err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("invalid secret part format: %w", err))
-			return
-		}
+// 	// 3. Decrypt SecretPart to get session key
+// 	secretPartBytes, err := crypto.Decrypt(clientKey, asRep.SecretPart().Ciphertext())
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to decrypt session key (wrong password?): %w", err)
+// 	}
 
-		sessionKey := encRepPart.SessionKey()
+// 	var encRepPart protocol.EncKDCRepPart
+// 	if err := json.Unmarshal(secretPartBytes, &encRepPart); err != nil {
+// 		return nil, fmt.Errorf("invalid secret part format: %w", err)
+// 	}
 
-		// 5. Store TGT with session key and client principal in cache
-		r.cache.StoreTGTWithSession(asRep.Ticket(), sessionKey, client)
+// 	sessionKey := encRepPart.SessionKey()
 
-		server.Encode(w, http.StatusOK, map[string]interface{}{
-			"status":        "logged_in",
-			"user":          body.Username,
-			"tgt_encrypted": true,
-			"session_key":   base64.StdEncoding.EncodeToString(sessionKey.Expose()),
-		})
-	}
-}
+// 	// 4. Store TGT with session key and client principal in cache
+// 	r.cache.StoreTGTWithSession(asRep.Ticket(), sessionKey, client)
+
+// 	return map[string]any{
+// 		"status":        "logged_in",
+// 		"user":          body.Username,
+// 		"tgt_encrypted": true,
+// 		"session_key":   base64.StdEncoding.EncodeToString(sessionKey.Expose()),
+// 	}, nil
+// }
 
 // GetTicketRoute - POST /api/ticket
 // Calls KDC TGS Exchange, stores service ticket
-type GetTicketRoute struct {
-	kdcAddr string
-	cache   *TicketCache
-}
+// type GetTicketRoute struct {
+// 	sdk   *sdk.Sdk
+// 	cache *TicketCache
+// }
 
-func (r *GetTicketRoute) Method() string { return http.MethodPost }
-func (r *GetTicketRoute) Path() string   { return "/api/ticket" }
-func (r *GetTicketRoute) Handle() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			Service string `json:"service"` // e.g., "http/api-server"
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			server.EncodeError(w, http.StatusBadRequest, err)
-			return
-		}
+// func (r *GetTicketRoute) Method() string { return http.MethodPost }
+// func (r *GetTicketRoute) Path() string   { return "/api/ticket" }
 
-		// 1. Get TGT and session key from cache
-		tgt := r.cache.GetTGT()
-		if tgt == nil {
-			server.EncodeError(w, http.StatusUnauthorized, fmt.Errorf("not logged in"))
-			return
-		}
+// type ticketRequest struct {
+// 	Service string `json:"service"` // e.g., "http/api-server"
+// }
 
-		sessionKey := r.cache.GetTGTSessionKey()
-		if sessionKey == nil {
-			server.EncodeError(w, http.StatusUnauthorized, fmt.Errorf("no session key"))
-			return
-		}
+// func (r *GetTicketRoute) Handle() http.HandlerFunc {
+// 	return func(w http.ResponseWriter, req *http.Request) {
+// 		body, err := server.Decode[ticketRequest](req)
+// 		if err != nil {
+// 			server.EncodeError(w, http.StatusBadRequest, err)
+// 			return
+// 		}
 
-		clientPrincipal := r.cache.GetClientPrincipal()
+// 		res, err := r.getTicket(req.Context(), body)
+// 		if err != nil {
+// 			server.EncodeError(w, http.StatusInternalServerError, err)
+// 			return
+// 		}
 
-		// 2. Parse service principal
-		var servicePrincipal protocol.Principal
-		if body.Service == "http/api-server" {
-			sp, err := protocol.NewPrincipal("http", "api-server", "ATHENA.MIT.EDU")
-			if err != nil {
-				server.EncodeError(w, http.StatusBadRequest, fmt.Errorf("invalid service: %w", err))
-				return
-			}
-			servicePrincipal = sp
-		} else {
-			server.EncodeError(w, http.StatusBadRequest, fmt.Errorf("unsupported service: %s", body.Service))
-			return
-		}
+// 		if err := server.Encode(w, http.StatusOK, res); err != nil {
+// 			server.EncodeError(w, http.StatusInternalServerError, err)
+// 			return
+// 		}
+// 	}
+// }
 
-		// 3. Create authenticator with REAL client principal
-		addr, err := protocol.NewAddress(net.IPv4(127, 0, 0, 1))
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// func (r *GetTicketRoute) getTicket(ctx context.Context, body ticketRequest) (map[string]any, error) {
+// 	// 1. Get TGT and session key from cache
+// 	tgt := r.cache.GetTGT()
+// 	if tgt == nil {
+// 		return nil, fmt.Errorf("not logged in")
+// 	}
 
-		timestamp := time.Now()
+// 	sessionKey := r.cache.GetTGTSessionKey()
+// 	if sessionKey == nil {
+// 		return nil, fmt.Errorf("no session key")
+// 	}
 
-		authenticator, err := protocol.NewAuthenticator(clientPrincipal, addr, timestamp)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	clientPrincipal := r.cache.GetClientPrincipal()
 
-		nonce, err := protocol.NewNonce(int32(time.Now().UnixNano()%100000 + 1))
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	// 2. Parse service principal
+// 	if body.Service != "http/api-server" {
+// 		return nil, fmt.Errorf("unsupported service: %s", body.Service)
+// 	}
 
-		// 4. ENCRYPT authenticator with session key from AS-REP
-		authBytes, err := json.Marshal(authenticator)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	servicePrincipal, err := protocol.NewPrincipal("http", "api-server", "ATHENA.MIT.EDU")
+// 	if err != nil {
+// 		return nil, fmt.Errorf("invalid service: %w", err)
+// 	}
 
-		encryptedAuthBytes, err := crypto.Encrypt(*sessionKey, authBytes)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("failed to encrypt authenticator: %w", err))
-			return
-		}
+// 	// 3. Create authenticator with REAL client principal
+// 	addr, err := protocol.NewAddress(net.IPv4(127, 0, 0, 1))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		encAuth, err := protocol.NewEncryptedData(encryptedAuthBytes)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	timestamp := time.Now()
 
-		// 5. Build TGS-REQ
+// 	authenticator, err := protocol.NewAuthenticator(clientPrincipal, addr, timestamp)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		tgsReq, err := protocol.NewTGSReq(servicePrincipal, *tgt, encAuth, nonce)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	nonce, err := protocol.NewNonce(int32(time.Now().UnixNano()%100000 + 1))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		// 5. POST to KDC TGS Exchange
-		reqBody, err := json.Marshal(tgsReq)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	// 4. ENCRYPT authenticator with session key from AS-REP
+// 	authBytes, err := json.Marshal(authenticator)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		resp, err := http.Post(r.kdcAddr+"/tgs", "application/json", bytes.NewReader(reqBody))
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("kdc unreachable: %w", err))
-			return
-		}
-		defer resp.Body.Close()
+// 	encryptedAuthBytes, err := crypto.Encrypt(*sessionKey, authBytes)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to encrypt authenticator: %w", err)
+// 	}
 
-		if resp.StatusCode != http.StatusOK {
-			bodyBytes, _ := io.ReadAll(resp.Body)
-			server.EncodeError(w, resp.StatusCode, fmt.Errorf("kdc error: %s", string(bodyBytes)))
-			return
-		}
+// 	encAuth, err := protocol.NewEncryptedData(encryptedAuthBytes)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		var tgsRep protocol.TGSRep
-		if err := json.NewDecoder(resp.Body).Decode(&tgsRep); err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("invalid kdc response: %w", err))
-			return
-		}
+// 	// 5. Build TGS-REQ
+// 	tgsReq, err := protocol.NewTGSReq(servicePrincipal, *tgt, encAuth, nonce)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-		// 6. Decrypt SecretPart to get service session key
-		serviceSecretBytes, err := crypto.Decrypt(*sessionKey, tgsRep.SecretPart().Ciphertext())
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("failed to decrypt service session key: %w", err))
-			return
-		}
+// 	tgsRep, err := r.sdk.Kdc.PostTGS(ctx, tgsReq)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("invalid kdc response: %w", err)
+// 	}
 
-		var serviceEncRepPart protocol.EncKDCRepPart
-		if err := json.Unmarshal(serviceSecretBytes, &serviceEncRepPart); err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("invalid service secret part format: %w", err))
-			return
-		}
+// 	// 6. Decrypt SecretPart to get service session key
+// 	serviceSecretBytes, err := crypto.Decrypt(*sessionKey, tgsRep.SecretPart().Ciphertext())
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to decrypt service session key: %w", err)
+// 	}
 
-		serviceSessionKey := serviceEncRepPart.SessionKey()
+// 	var serviceEncRepPart protocol.EncKDCRepPart
+// 	if err := json.Unmarshal(serviceSecretBytes, &serviceEncRepPart); err != nil {
+// 		return nil, fmt.Errorf("invalid service secret part format: %w", err)
+// 	}
 
-		// 7. Store service ticket WITH session key in cache
-		r.cache.StoreServiceTicketWithSession(body.Service, tgsRep.Ticket(), serviceSessionKey)
+// 	serviceSessionKey := serviceEncRepPart.SessionKey()
 
-		server.Encode(w, http.StatusOK, map[string]interface{}{
-			"status":  "ticket_obtained",
-			"service": body.Service,
-			"ticket":  base64.StdEncoding.EncodeToString(tgsRep.Ticket().Ciphertext()),
-		})
-	}
-}
+// 	// 7. Store service ticket WITH session key in cache
+// 	r.cache.StoreServiceTicketWithSession(body.Service, tgsRep.Ticket(), serviceSessionKey)
+
+// 	return map[string]any{
+// 		"status":  "ticket_obtained",
+// 		"service": body.Service,
+// 		"ticket":  base64.StdEncoding.EncodeToString(tgsRep.Ticket().Ciphertext()),
+// 	}, nil
+// }
 
 // CallServiceRoute - POST /api/call
 // Calls protected Api Server endpoint
-type CallServiceRoute struct {
-	cache *TicketCache
-}
+// type CallServiceRoute struct {
+// 	cache *TicketCache
+// }
 
-func (r *CallServiceRoute) Method() string { return http.MethodPost }
-func (r *CallServiceRoute) Path() string   { return "/api/call" }
-func (r *CallServiceRoute) Handle() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			URL string `json:"url"` // e.g., "http://localhost:9090/api/whoami"
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			server.EncodeError(w, http.StatusBadRequest, err)
-			return
-		}
+// func (r *CallServiceRoute) Method() string { return http.MethodPost }
+// func (r *CallServiceRoute) Path() string   { return "/api/call" }
 
-		// 1. Get service ticket and session key from cache
-		ticket := r.cache.GetServiceTicket("http/api-server")
-		if ticket == nil {
-			server.EncodeError(w, http.StatusUnauthorized, fmt.Errorf("no service ticket cached"))
-			return
-		}
+// type callRequest struct {
+// 	URL string `json:"url"` // e.g., "http://localhost:9090/api/whoami"
+// }
 
-		serviceSessionKey := r.cache.GetServiceSessionKey("http/api-server")
-		if serviceSessionKey == nil {
-			server.EncodeError(w, http.StatusUnauthorized, fmt.Errorf("no service session key"))
-			return
-		}
+// func (r *CallServiceRoute) Handle() http.HandlerFunc {
+// 	return func(w http.ResponseWriter, req *http.Request) {
+// 		body, err := server.Decode[callRequest](req)
+// 		if err != nil {
+// 			server.EncodeError(w, http.StatusBadRequest, err)
+// 			return
+// 		}
 
-		clientPrincipal := r.cache.GetClientPrincipal()
+// 		respBody, statusCode, err := r.callService(req.Context(), body)
+// 		if err != nil {
+// 			server.EncodeError(w, http.StatusInternalServerError, err)
+// 			return
+// 		}
 
-		// 2. Build AP-REQ with encrypted authenticator
-		addr, err := protocol.NewAddress(net.IPv4(127, 0, 0, 1))
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 		w.Header().Set("Content-Type", "application/json")
+// 		w.WriteHeader(statusCode)
+// 		w.Write(respBody)
+// 	}
+// }
 
-		timestamp := time.Now()
+// func (r *CallServiceRoute) callService(ctx context.Context, body callRequest) ([]byte, int, error) {
+// 	// 1. Get service ticket and session key from cache
+// 	ticket := r.cache.GetServiceTicket("http/api-server")
+// 	if ticket == nil {
+// 		return nil, 0, fmt.Errorf("no service ticket cached")
+// 	}
 
-		authenticator, err := protocol.NewAuthenticator(clientPrincipal, addr, timestamp)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	serviceSessionKey := r.cache.GetServiceSessionKey("http/api-server")
+// 	if serviceSessionKey == nil {
+// 		return nil, 0, fmt.Errorf("no service session key")
+// 	}
 
-		// ENCRYPT the authenticator with the service session key
-		authBytes, err := json.Marshal(authenticator)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	clientPrincipal := r.cache.GetClientPrincipal()
 
-		encryptedAuthBytes, err := crypto.Encrypt(*serviceSessionKey, authBytes)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("failed to encrypt authenticator: %w", err))
-			return
-		}
+// 	// 2. Build AP-REQ with encrypted authenticator
+// 	addr, err := protocol.NewAddress(net.IPv4(127, 0, 0, 1))
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-		encAuth, err := protocol.NewEncryptedData(encryptedAuthBytes)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	authenticator, err := protocol.NewAuthenticator(clientPrincipal, addr, time.Now())
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-		apReq, err := protocol.NewAPReq(*ticket, encAuth)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	// ENCRYPT the authenticator with the service session key
+// 	authBytes, err := json.Marshal(authenticator)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-		// 3. Serialize AP-REQ
-		apReqBytes, err := json.Marshal(apReq)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	encryptedAuthBytes, err := crypto.Encrypt(*serviceSessionKey, authBytes)
+// 	if err != nil {
+// 		return nil, 0, fmt.Errorf("failed to encrypt authenticator: %w", err)
+// 	}
 
-		// 4. Call protected endpoint
-		httpReq, err := http.NewRequest(http.MethodGet, body.URL, nil)
-		if err != nil {
-			server.EncodeError(w, http.StatusBadRequest, err)
-			return
-		}
+// 	encAuth, err := protocol.NewEncryptedData(encryptedAuthBytes)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-		httpReq.Header.Set("Authorization", "Kerberos "+base64.StdEncoding.EncodeToString(apReqBytes))
+// 	apReq, err := protocol.NewAPReq(*ticket, encAuth)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-		client := &http.Client{}
-		resp, err := client.Do(httpReq)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, fmt.Errorf("service unreachable: %w", err))
-			return
-		}
-		defer resp.Body.Close()
+// 	// 3. Serialize AP-REQ
+// 	apReqBytes, err := json.Marshal(apReq)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-		// 5. Return service response
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			server.EncodeError(w, http.StatusInternalServerError, err)
-			return
-		}
+// 	// 4. Call protected endpoint
+// 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, body.URL, nil)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(resp.StatusCode)
-		w.Write(respBody)
-	}
-}
+// 	httpReq.Header.Set("Authorization", "Kerberos "+base64.StdEncoding.EncodeToString(apReqBytes))
+
+// 	client := &http.Client{}
+// 	resp, err := client.Do(httpReq)
+// 	if err != nil {
+// 		return nil, 0, fmt.Errorf("service unreachable: %w", err)
+// 	}
+// 	defer resp.Body.Close()
+
+// 	// 5. Return service response
+// 	respBody, err := io.ReadAll(resp.Body)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	return respBody, resp.StatusCode, nil
+// }
