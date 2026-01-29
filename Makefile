@@ -1,6 +1,9 @@
 export GO111MODULE=on
 APP=kerberos
-APP_EXECUTABLE="./out/kdc"
+KDC_EXECUTABLE="./out/kdc"
+CLIENT_EXECUTABLE="./out/client"
+API_EXECUTABLE="./out/api"
+KADMIN_EXECUTABLE="./out/kadmin"
 ALL_PACKAGES=$(shell go list ./... | grep -v /vendor)
 SHELL := /bin/bash # Use bash syntax
 
@@ -11,17 +14,24 @@ WHITE  := $(shell tput -Txterm setaf 7)
 CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
+.PHONY: all test build vendor docs
+
+## All
+all: ## runs setup, quality checks and builds
+	@$(MAKE) check-quality
+	@$(MAKE) test
+	@$(MAKE) build
+
 generate:
 	sqlc generate
 
 ## Quality
 check-quality: ## runs code quality checks
-	make lint
-	make fmt
-	make vet
+	@$(MAKE) lint
+	@$(MAKE) fmt
+	@$(MAKE) vet
 
-# Append || true below if blocking local developement
-lint: ## go linting. Update and use specific lint tool and options
+lint: ## go linting
 	golangci-lint run
 
 vet: ## go vet
@@ -38,29 +48,42 @@ vendor: ## runs go mod vendor
 
 ## Test
 test: ## runs tests and create generates coverage report
-	make tidy
-	make vendor
+	@$(MAKE) tidy
+	@$(MAKE) vendor
 	gotest -v -timeout 10m ./... -coverprofile=coverage.out -json > report.json
 
 coverage: ## displays test coverage report in html mode
-	make test
+	@$(MAKE) test
 	go tool cover -html=coverage.out
 
 ## Build
 build: ## build all the go applications
-	mkdir -p out/
-	for dir in cmd/*; do \
+	@mkdir -p out/
+	@for dir in cmd/*; do \
 		if [ -d "$$dir" ]; then \
 			name=$$(basename $$dir); \
+			echo "Building $$name..."; \
 			go build -o out/$$name ./$$dir; \
 		fi \
 	done
-	@echo "Build passed"
+	@echo "${GREEN}Build passed${RESET}"
 
-run: ## runs the go binary. usage: make run [args...]
-	make build
-	chmod +x $(APP_EXECUTABLE)
-	$(APP_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS)) $(ARGS)
+## Run
+kdc:
+	@$(MAKE) build
+	$(KDC_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS)) $(ARGS)
+
+api: ## runs the kdc binary
+	@$(MAKE) build
+	$(API_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS)) $(ARGS)
+
+client:
+	@$(MAKE) build
+	$(CLIENT_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS)) $(ARGS)
+
+kadmin:
+	@$(MAKE) build
+	$(KADMIN_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS)) $(ARGS)
 
 docs: ## builds the documentation
 	$(MAKE) -C docs
@@ -69,13 +92,7 @@ clean: ## cleans binary and other generated files
 	go clean
 	rm -rf out/
 	rm -f coverage*.out
-
-.PHONY: all test build vendor docs
-## All
-all: ## runs setup, quality checks and builds
-	make check-quality
-	make test
-	make build
+	@$(MAKE) -C docs clean
 
 .PHONY: help
 ## Help
