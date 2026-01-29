@@ -3,11 +3,17 @@ package protocol
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 )
 
 var (
 	ErrInvalidPrincipal = errors.New("principal cannot be empty")
 )
+
+type TGSEndpoint struct{}
+
+func (*TGSEndpoint) Method() string { return http.MethodPost }
+func (*TGSEndpoint) Path() string   { return "/tgs" }
 
 type TGSReq struct {
 	server        Principal

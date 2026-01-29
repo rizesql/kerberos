@@ -12,6 +12,7 @@ import (
 )
 
 type Handler struct {
+	protocol.ASEndpoint
 	exchange *Exchange
 	logger   *logging.Logger
 }
@@ -22,9 +23,6 @@ func NewHandler(platform *kdc.Platform, cfg kdc.Config) *Handler {
 		logger:   platform.Logger,
 	}
 }
-
-func (h *Handler) Method() string { return http.MethodPost }
-func (h *Handler) Path() string   { return "/as" }
 
 func (h *Handler) Handle() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,14 @@
 package protocol
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"net/http"
+)
+
+type ASEndpoint struct{}
+
+func (*ASEndpoint) Method() string { return http.MethodPost }
+func (*ASEndpoint) Path() string   { return "/as" }
 
 type ASReq struct {
 	client     Principal
