@@ -20,10 +20,13 @@ func (r *WhoAmIRoute) Handle() http.HandlerFunc {
 			return
 		}
 
-		server.Encode(w, http.StatusOK, map[string]string{
+		if err := server.Encode(w, http.StatusOK, map[string]string{
 			"authenticated_as": client.String(),
 			"message":          "Welcome to the protected resource!",
-		})
+		}); err != nil {
+			server.EncodeError(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 }
 
@@ -36,9 +39,12 @@ func (r *SecretRoute) Handle() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		client, _ := ap.ClientFromContext(r.Context())
 
-		server.Encode(w, http.StatusOK, map[string]string{
+		if err := server.Encode(w, http.StatusOK, map[string]string{
 			"secret": "secret!",
 			"for":    client.String(),
-		})
+		}); err != nil {
+			server.EncodeError(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 }
